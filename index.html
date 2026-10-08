@@ -976,7 +976,7 @@
                         </div>
                         <div>
                             <label class="block text-[11px] font-mono uppercase tracking-wider text-slate-400 mb-1.5">Aadhaar / Citizen ID</label>
-                            <input type="text" id="gov-ssn" placeholder="XXXX-XXXX-XXXX" class="cyber-input w-full px-3.5 py-2.5 rounded-xl text-sm text-slate-200 placeholder-slate-600">
+                            <input type="text" id="gov-ssn" placeholder="XXXX-XXXX-DEMO" class="cyber-input w-full px-3.5 py-2.5 rounded-xl text-sm text-slate-200 placeholder-slate-600">
                         </div>
                         <div>
                             <label class="block text-[11px] font-mono uppercase tracking-wider text-slate-400 mb-1.5">Registered Phone</label>
@@ -1146,7 +1146,7 @@
                     </div>
                     <div>
                         <label class="block text-[10px] font-mono text-slate-400 uppercase mb-1">Aadhaar / SSN</label>
-                        <input type="text" id="pi-ssn" placeholder="XXXX-XXXX-XXXX" class="cyber-input w-full px-3 py-2 rounded-xl text-xs text-slate-200">
+                        <input type="text" id="pi-ssn" placeholder="XXXX-XXXX-DEMO" class="cyber-input w-full px-3 py-2 rounded-xl text-xs text-slate-200">
                     </div>
                 </div>
                 <div>
@@ -1395,10 +1395,12 @@
         setInterval(updateClock, 1000);
         updateClock();
 
-        const DB_KEY = 'setuGovUser';
-        const APPS_KEY = 'setuGovApps';
-        const VAULT_KEY = 'setuGovPersonalInfo';
+        const LEGACY_STORAGE_KEYS = ['setuGovUser', 'setuGovApps', 'setuGovPersonalInfo', 'setuGovAdminKey'];
         const APPLICATIONS_ENDPOINT = '/.netlify/functions/applications';
+        let currentUser = null;
+        let currentPersonalInfo = {};
+        let applicationRecords = [];
+        let administratorKey = '';
         let sharedApplicationsAvailable = false;
         let sharedApplicationsWarningShown = false;
         let sharedApplicationsPollTimer = null;
@@ -1419,13 +1421,10 @@
         }
 
         function ensureAdministratorKey() {
-            let key = sessionStorage.getItem('setuGovAdminKey');
-            if (!key) {
-                key = window.prompt('Enter the shared administrator key configured for this Netlify site:');
-                if (!key || !key.trim()) return false;
-                key = key.trim();
-                sessionStorage.setItem('setuGovAdminKey', key);
-            }
+            if (administratorKey) return true;
+            const key = window.prompt('Enter the shared administrator key configured for this Netlify site:');
+            if (!key || !key.trim()) return false;
+            administratorKey = key.trim();
             return true;
         }
 
@@ -1433,7 +1432,7 @@
             const headers = {};
             if (body) headers['Content-Type'] = 'application/json';
             if (method === 'GET' || method === 'PATCH') {
-                const adminKey = sessionStorage.getItem('setuGovAdminKey');
+                const adminKey = administratorKey;
                 if (adminKey) headers.Authorization = `Bearer ${adminKey}`;
             }
             const response = await fetch(APPLICATIONS_ENDPOINT, {
@@ -1457,7 +1456,7 @@
                 if (showMessage) showToast('Shared storage is available when this demo is deployed on Netlify.', 'info');
                 return false;
             }
-            if (!sessionStorage.getItem('setuGovAdminKey') && !ensureAdministratorKey()) {
+            if (!administratorKey && !ensureAdministratorKey()) {
                 setSharedStorageStatus('Administrator sign-in required', false);
                 return false;
             }
@@ -1467,7 +1466,7 @@
                 if (!Array.isArray(payload.applications)) {
                     throw new Error('The shared ledger returned an invalid application list.');
                 }
-                localStorage.setItem(APPS_KEY, JSON.stringify(payload.applications));
+                applicationRecords = payload.applications;
                 sharedApplicationsAvailable = true;
                 setSharedStorageStatus('Shared live ledger', true);
                 renderAdminDashboard();
@@ -1476,10 +1475,10 @@
                 return true;
             } catch (error) {
                 sharedApplicationsAvailable = false;
-                if (error.status === 401) sessionStorage.removeItem('setuGovAdminKey');
+                if (error.status === 401) administratorKey = '';
                 setSharedStorageStatus('Shared storage unavailable', false);
                 if (showMessage || !sharedApplicationsWarningShown) {
-                    showToast(`Shared application sync failed: ${error.message}. Changes may remain local to this browser.`, 'warning');
+                    showToast(`Shared application sync failed: ${error.message}. Changes in this tab are not persisted.`, 'warning');
                     sharedApplicationsWarningShown = true;
                 }
                 return false;
@@ -1493,14 +1492,14 @@
                     if (!payload.application) throw new Error('The shared ledger did not return the saved application.');
                     const apps = getApps().filter((item) => String(item.id) !== String(application.id));
                     apps.unshift(payload.application);
-                    localStorage.setItem(APPS_KEY, JSON.stringify(apps));
+                    applicationRecords = apps;
                     sharedApplicationsAvailable = true;
                     setSharedStorageStatus('Shared live ledger', true);
                     return { application: payload.application, shared: true, error: null };
                 } catch (error) {
                     const apps = getApps();
                     apps.unshift(application);
-                    localStorage.setItem(APPS_KEY, JSON.stringify(apps));
+                    applicationRecords = apps;
                     sharedApplicationsAvailable = false;
                     setSharedStorageStatus('Shared storage unavailable', false);
                     return { application, shared: false, error };
@@ -1509,7 +1508,7 @@
 
             const apps = getApps();
             apps.unshift(application);
-            localStorage.setItem(APPS_KEY, JSON.stringify(apps));
+            applicationRecords = apps;
             return { application, shared: false, error: null };
         }
 
@@ -1521,7 +1520,7 @@
                     const apps = getApps().map((item) =>
                         String(item.id) === String(appId) ? payload.application : item
                     );
-                    localStorage.setItem(APPS_KEY, JSON.stringify(apps));
+                    applicationRecords = apps;
                     sharedApplicationsAvailable = true;
                     setSharedStorageStatus('Shared live ledger', true);
                     return payload.application;
@@ -1536,7 +1535,6 @@
             const target = apps.find((item) => String(item.id) === String(appId));
             if (!target) return null;
             Object.assign(target, updates);
-            localStorage.setItem(APPS_KEY, JSON.stringify(apps));
             return target;
         }
 
@@ -1556,74 +1554,74 @@
 
         const demoCitizens = {
             priya: {
-                name: 'Priya Sharma',
-                email: 'priya.sharma@techventure.in',
-                phone: '+91 98201 12345',
-                dob: '1996-08-14',
-                ssn: '8492-3810-9281',
-                address: 'Flat 402, Cyber Heights, Indiranagar',
-                city: 'Bengaluru',
-                state: 'Karnataka',
-                zip: '560038'
+                name: 'Demo Citizen One',
+                email: 'citizen.one@example.invalid',
+                phone: '+91 00000 00000',
+                dob: '2000-01-01',
+                ssn: 'XXXX-XXXX-DEMO',
+                address: 'DEMO ADDRESS 1',
+                city: 'Demo City',
+                state: 'Demo State',
+                zip: '000000'
             },
             rajesh: {
-                name: 'Rajesh Kumar Verma',
-                email: 'rajesh.verma@seniorgov.in',
-                phone: '+91 94150 99881',
-                dob: '1962-03-22',
-                ssn: '4920-1192-3021',
-                address: '12-A, Old Cantonment Road',
-                city: 'Lucknow',
-                state: 'Uttar Pradesh',
-                zip: '226001'
+                name: 'Demo Citizen Two',
+                email: 'citizen.two@example.invalid',
+                phone: '+91 00000 00000',
+                dob: '2000-01-02',
+                ssn: 'XXXX-XXXX-DEMO',
+                address: 'DEMO ADDRESS 2',
+                city: 'Demo City',
+                state: 'Demo State',
+                zip: '000000'
             },
             aarav: {
-                name: 'Aarav Patel',
-                email: 'aarav.patel@iitd.ac.in',
-                phone: '+91 91234 56789',
-                dob: '2004-11-05',
-                ssn: '7721-9043-1823',
-                address: 'Hostel 7, Nilgiri House, IIT Campus',
-                city: 'New Delhi',
-                state: 'Delhi',
-                zip: '110016'
+                name: 'Demo Citizen Three',
+                email: 'citizen.three@example.invalid',
+                phone: '+91 00000 00000',
+                dob: '2000-01-03',
+                ssn: 'XXXX-XXXX-DEMO',
+                address: 'DEMO ADDRESS 3',
+                city: 'Demo City',
+                state: 'Demo State',
+                zip: '000000'
             }
         };
 
         const defaultApps = [
             {
                 id: 101, ackId: 'ACK-AAD-8921', service: 'Aadhar Card Update',
-                applicantName: 'Priya Sharma', applicantEmail: 'priya.sharma@techventure.in', applicantPhone: '+91 98201 12345',
-                dob: '1996-08-14', ssn: '8492-3810-9281', address: 'Flat 402, Cyber Heights, Indiranagar',
-                city: 'Bengaluru', state: 'Karnataka', zip: '560038',
+                applicantName: 'Demo Citizen One', applicantEmail: 'citizen.one@example.invalid', applicantPhone: '+91 00000 00000',
+                dob: '2000-01-01', ssn: 'XXXX-XXXX-DEMO', address: 'DEMO ADDRESS 1',
+                city: 'Demo City', state: 'Demo State', zip: '000000',
                 date: '2026-10-01', status: 'Approved', step: 4, officerNotes: 'Biometric verified via UIDAI mock gateway'
             },
             {
                 id: 102, ackId: 'ACK-PEN-7412', service: 'Pension Service Application',
-                applicantName: 'Rajesh Kumar Verma', applicantEmail: 'rajesh.verma@seniorgov.in', applicantPhone: '+91 94150 99881',
-                dob: '1962-03-22', ssn: '4920-1192-3021', address: '12-A, Old Cantonment Road',
-                city: 'Lucknow', state: 'Uttar Pradesh', zip: '226001',
+                applicantName: 'Demo Citizen Two', applicantEmail: 'citizen.two@example.invalid', applicantPhone: '+91 00000 00000',
+                dob: '2000-01-02', ssn: 'XXXX-XXXX-DEMO', address: 'DEMO ADDRESS 2',
+                city: 'Demo City', state: 'Demo State', zip: '000000',
                 date: '2026-10-02', status: 'Under Review', step: 3, officerNotes: 'Awaiting pension disbursement bank linkage'
             },
             {
                 id: 103, ackId: 'ACK-SCH-2940', service: 'Scholarship Application',
-                applicantName: 'Aarav Patel', applicantEmail: 'aarav.patel@iitd.ac.in', applicantPhone: '+91 91234 56789',
-                dob: '2004-11-05', ssn: '7721-9043-1823', address: 'Hostel 7, Nilgiri House, IIT Campus',
-                city: 'New Delhi', state: 'Delhi', zip: '110016',
+                applicantName: 'Demo Citizen Three', applicantEmail: 'citizen.three@example.invalid', applicantPhone: '+91 00000 00000',
+                dob: '2000-01-03', ssn: 'XXXX-XXXX-DEMO', address: 'DEMO ADDRESS 3',
+                city: 'Demo City', state: 'Demo State', zip: '000000',
                 date: '2026-10-03', status: 'Pending', step: 1, officerNotes: 'Fresh application received'
             },
             {
                 id: 104, ackId: 'ACK-HLT-5190', service: 'Healthcare Scheme',
-                applicantName: 'Sunita Devi', applicantEmail: 'sunita.devi@gram.in', applicantPhone: '+91 97180 23412',
-                dob: '1978-05-19', ssn: '3902-8812-4019', address: 'Village Rampur, Post Office Kalan',
-                city: 'Varanasi', state: 'Uttar Pradesh', zip: '221001',
+                applicantName: 'Demo Citizen Four', applicantEmail: 'citizen.four@example.invalid', applicantPhone: '+91 00000 00000',
+                dob: '2000-01-04', ssn: 'XXXX-XXXX-DEMO', address: 'DEMO ADDRESS 4',
+                city: 'Demo City', state: 'Demo State', zip: '000000',
                 date: '2026-10-03', status: 'Under Review', step: 2, officerNotes: 'Income certificate cross-check under scrutiny'
             },
             {
                 id: 105, ackId: 'ACK-BUS-9310', service: 'Business License Application',
-                applicantName: 'Vikram Malhotra', applicantEmail: 'vikram@malhotratech.com', applicantPhone: '+91 98110 54321',
-                dob: '1989-12-10', ssn: '5821-4902-1184', address: 'Unit 14B, Okhla Industrial Phase III',
-                city: 'New Delhi', state: 'Delhi', zip: '110020',
+                applicantName: 'Demo Citizen Five', applicantEmail: 'citizen.five@example.invalid', applicantPhone: '+91 00000 00000',
+                dob: '2000-01-05', ssn: 'XXXX-XXXX-DEMO', address: 'DEMO ADDRESS 5',
+                city: 'Demo City', state: 'Demo State', zip: '000000',
                 date: '2026-10-04', status: 'Pending', step: 1, officerNotes: 'GSTIN verification in queue'
             }
         ];
@@ -1653,7 +1651,7 @@
             document.getElementById('login-email').value = citizen.email;
             document.getElementById('login-phone').value = citizen.phone;
             document.getElementById('login-password').value = 'securepass2026';
-            localStorage.setItem(VAULT_KEY, JSON.stringify(citizen));
+            currentPersonalInfo = { ...citizen };
             updateDemoStep(1);
             setDemoNarration(`Identity verified: ${citizen.name} is ready for the demo walkthrough.`);
             showToast(`Loaded ${citizen.name}'s profile. Click Submit!`, 'info');
@@ -1667,12 +1665,12 @@
             setDemoNarration('Step 1/3 • Verifying citizen profile and DigiLocker vault.');
             updateDemoStep(1);
 
-            localStorage.setItem(DB_KEY, JSON.stringify({
+            currentUser = {
                 name: demoUser.name,
                 email: demoUser.email,
                 phone: demoUser.phone
-            }));
-            localStorage.setItem(VAULT_KEY, JSON.stringify(demoUser));
+            };
+            currentPersonalInfo = { ...demoUser };
 
             document.getElementById('login-name').value = demoUser.name;
             document.getElementById('login-email').value = demoUser.email;
@@ -1767,7 +1765,7 @@
                 showToast('Switched to Administrator Scrutiny Portal', 'info');
             } else {
                 document.getElementById('admin-dashboard').classList.add('hidden');
-                const user = JSON.parse(localStorage.getItem(DB_KEY));
+                const user = currentUser;
                 if (user) {
                     document.getElementById('home-dashboard').classList.remove('hidden');
                     document.getElementById('login-section').classList.add('hidden');
@@ -1829,10 +1827,15 @@
 
             tbody.innerHTML = filtered.map((a, idx) => {
                 const st = getStatusInfo(a.status);
-                const ack = a.ackId || `ACK-${a.id}`;
-                const name = a.applicantName || 'Citizen Applicant';
-                const email = a.applicantEmail || 'N/A';
-                const location = (a.city && a.state) ? `${a.city}, ${a.state}` : (a.city || 'India');
+                const ack = escapeHtml(a.ackId || `ACK-${a.id}`);
+                const name = escapeHtml(a.applicantName || 'Citizen Applicant');
+                const email = escapeHtml(a.applicantEmail || 'N/A');
+                const location = escapeHtml((a.city && a.state) ? `${a.city}, ${a.state}` : (a.city || 'India'));
+                const service = escapeHtml(a.service);
+                const ssn = escapeHtml(a.ssn || 'XXXX-XXXX-DEMO');
+                const date = escapeHtml(a.date);
+                const status = escapeHtml(a.status);
+                const appId = escapeHtml(a.id);
 
                 return `
                     <tr class="hover:bg-slate-800/40 transition group border-b border-white/5 font-mono text-xs">
@@ -1845,38 +1848,38 @@
                             <div class="text-[10px] text-slate-400 font-mono">${email}</div>
                         </td>
                         <td class="p-3.5 font-sans">
-                            <span class="text-xs text-brand-300 font-medium">${a.service}</span>
+                            <span class="text-xs text-brand-300 font-medium">${service}</span>
                         </td>
                         <td class="p-3.5 font-mono text-[11px] text-slate-300">
-                            ${a.ssn || 'XXXX-XXXX-XXXX'}
+                            ${ssn}
                         </td>
                         <td class="p-3.5 font-sans text-xs text-slate-300">
                             ${location}
                         </td>
                         <td class="p-3.5 font-mono text-[11px] text-slate-400">
-                            ${a.date}
+                            ${date}
                         </td>
                         <td class="p-3.5">
                             <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full border text-[10px] font-mono font-bold ${st.badge}">
                                 <i class="fas ${st.icon} text-[9px]"></i>
-                                <span>${a.status}</span>
+                                <span>${status}</span>
                             </span>
                         </td>
                         <td class="p-3.5 pr-5 text-right font-sans">
                             <div class="inline-flex items-center gap-1.5">
-                                <button onclick="quickUpdateStatus('${a.id}', 'Approved')" title="Accept / Approve"
+                                <button data-admin-app-id="${appId}" data-admin-action="Approved" title="Accept / Approve"
                                     class="p-1.5 px-2 rounded-lg bg-emerald-500/10 hover:bg-emerald-500/30 text-emerald-400 border border-emerald-500/30 transition text-xs font-medium">
                                     <i class="fas fa-check"></i>
                                 </button>
-                                <button onclick="quickUpdateStatus('${a.id}', 'Under Review')" title="Mark Under Review"
+                                <button data-admin-app-id="${appId}" data-admin-action="Under Review" title="Mark Under Review"
                                     class="p-1.5 px-2 rounded-lg bg-cyanAccent-500/10 hover:bg-cyanAccent-500/30 text-cyanAccent-400 border border-cyanAccent-500/30 transition text-xs font-medium">
                                     <i class="fas fa-magnifying-glass"></i>
                                 </button>
-                                <button onclick="quickUpdateStatus('${a.id}', 'Rejected')" title="Reject Application"
+                                <button data-admin-app-id="${appId}" data-admin-action="Rejected" title="Reject Application"
                                     class="p-1.5 px-2 rounded-lg bg-rose-500/10 hover:bg-rose-500/30 text-rose-400 border border-rose-500/30 transition text-xs font-medium">
                                     <i class="fas fa-xmark"></i>
                                 </button>
-                                <button onclick="openScrutinyModal('${a.id}')" title="Full Dossier Scrutiny"
+                                <button data-admin-app-id="${appId}" data-admin-action="scrutiny" title="Full Dossier Scrutiny"
                                     class="p-1.5 px-2 rounded-lg bg-white/5 hover:bg-white/15 text-slate-300 border border-white/10 transition text-xs">
                                     <i class="fas fa-eye text-brand-400"></i>
                                 </button>
@@ -1885,6 +1888,13 @@
                     </tr>
                 `;
             }).join('');
+            tbody.querySelectorAll('[data-admin-action]').forEach((button) => {
+                button.addEventListener('click', () => {
+                    const { adminAppId, adminAction } = button.dataset;
+                    if (adminAction === 'scrutiny') openScrutinyModal(adminAppId);
+                    else quickUpdateStatus(adminAppId, adminAction);
+                });
+            });
         }
 
         async function quickUpdateStatus(appId, newStatus) {
@@ -1912,7 +1922,7 @@
             document.getElementById('sc-ack').textContent = app.ackId || `ACK-${app.id}`;
             document.getElementById('sc-name').textContent = app.applicantName || 'Citizen Applicant';
             document.getElementById('sc-service').textContent = app.service;
-            document.getElementById('sc-ssn').textContent = app.ssn || 'XXXX-XXXX-XXXX';
+            document.getElementById('sc-ssn').textContent = app.ssn || 'XXXX-XXXX-DEMO';
             document.getElementById('sc-phone').textContent = app.applicantPhone || 'N/A';
             document.getElementById('sc-email').textContent = app.applicantEmail || 'N/A';
             document.getElementById('sc-dob').textContent = app.dob || 'N/A';
@@ -2093,16 +2103,18 @@
 
         document.addEventListener('DOMContentLoaded', () => {
             filterServices();
-            if (!localStorage.getItem(APPS_KEY)) {
-                localStorage.setItem(APPS_KEY, JSON.stringify(defaultApps));
+            try {
+                LEGACY_STORAGE_KEYS.forEach((key) => {
+                    localStorage.removeItem(key);
+                    sessionStorage.removeItem(key);
+                });
+            } catch (error) {
+                console.warn('Could not clear previously stored personal data:', error);
             }
-            const savedUser = JSON.parse(localStorage.getItem(DB_KEY));
-            if (savedUser) showHome(savedUser);
+            applicationRecords = defaultApps.map((application) => ({ ...application }));
+            currentPersonalInfo = { ...demoCitizens.priya };
+            if (currentUser) showHome(currentUser);
             else loadDemoProfile('priya');
-            if (shouldUseSharedApplications() && sessionStorage.getItem('setuGovAdminKey')) {
-                refreshSharedApplications();
-                sharedApplicationsPollTimer = setInterval(() => refreshSharedApplications(), 15000);
-            }
         });
 
         document.getElementById('login-form').addEventListener('submit', function(e) {
@@ -2113,11 +2125,8 @@
                 email: document.getElementById('login-email').value.trim(),
                 phone: document.getElementById('login-phone').value.trim()
             };
-            localStorage.setItem(DB_KEY, JSON.stringify(user));
-
-            const vault = JSON.parse(localStorage.getItem(VAULT_KEY)) || {};
-            vault.name = user.name; vault.email = user.email; vault.phone = user.phone;
-            localStorage.setItem(VAULT_KEY, JSON.stringify(vault));
+            currentUser = user;
+            currentPersonalInfo = { ...currentPersonalInfo, ...user };
 
             showHome(user);
             showConfetti();
@@ -2125,6 +2134,7 @@
         });
 
         function showHome(user) {
+            currentUser = user;
             document.getElementById('login-section').classList.add('hidden');
             document.getElementById('home-dashboard').classList.remove('hidden');
 
@@ -2142,18 +2152,13 @@
 
         function logout() {
             sfxClick();
-            localStorage.removeItem(DB_KEY);
+            currentUser = null;
+            currentPersonalInfo = {};
             location.reload();
         }
 
         function getApps() {
-            try {
-                const stored = JSON.parse(localStorage.getItem(APPS_KEY) || '[]');
-                return Array.isArray(stored) ? stored : [];
-            } catch (error) {
-                console.error('Could not read cached applications:', error);
-                return [];
-            }
+            return applicationRecords;
         }
 
         function populateRecentApps() {
@@ -2169,27 +2174,34 @@
 
             container.innerHTML = apps.slice(0, 3).map(app => {
                 const st = getStatusInfo(app.status);
-                const ack = app.ackId || `ACK-SETU-${app.id}`;
+                const ack = escapeHtml(app.ackId || `ACK-SETU-${app.id}`);
+                const status = escapeHtml(app.status);
+                const service = escapeHtml(app.service);
+                const date = escapeHtml(app.date);
+                const appId = escapeHtml(app.id);
                 return `
                     <div class="glass-panel rounded-2xl p-4 border border-white/10 hover:border-brand-500/40 transition group cursor-pointer spotlight-card"
-                         onclick="inspectAppDetails('${app.id}')">
+                         data-inspect-app-id="${appId}">
                         <div class="flex items-start justify-between gap-2 mb-3">
                             <div class="flex items-center gap-2">
                                 <span class="w-2.5 h-2.5 rounded-full ${st.dot}"></span>
                                 <span class="text-[10px] font-mono text-slate-400">${ack}</span>
                             </div>
                             <span class="text-[10px] font-mono px-2 py-0.5 rounded-full border ${st.badge} flex items-center gap-1">
-                                <i class="fas ${st.icon} text-[9px]"></i> ${app.status}
+                                <i class="fas ${st.icon} text-[9px]"></i> ${status}
                             </span>
                         </div>
-                        <h4 class="font-bold text-white text-sm group-hover:text-cyanAccent-300 transition-colors">${app.service}</h4>
+                        <h4 class="font-bold text-white text-sm group-hover:text-cyanAccent-300 transition-colors">${service}</h4>
                         <div class="flex items-center justify-between text-[11px] text-slate-400 mt-2 font-mono">
-                            <span>LODGED: ${app.date}</span>
+                            <span>LODGED: ${date}</span>
                             <span class="text-brand-400 group-hover:underline flex items-center gap-1">Inspect <i class="fas fa-chevron-right text-[8px]"></i></span>
                         </div>
                     </div>
                 `;
             }).join('');
+            container.querySelectorAll('[data-inspect-app-id]').forEach((card) => {
+                card.addEventListener('click', () => inspectAppDetails(card.dataset.inspectAppId));
+            });
         }
 
         function inspectAppDetails(appId) {
@@ -2199,7 +2211,13 @@
             if (!app) return;
 
             const st = getStatusInfo(app.status);
-            const ack = app.ackId || `ACK-SETU-${app.id}`;
+            const receiptAck = app.ackId || `ACK-SETU-${app.id}`;
+            const ack = escapeHtml(receiptAck);
+            const service = escapeHtml(app.service);
+            const applicantName = escapeHtml(app.applicantName || 'Citizen');
+            const status = escapeHtml(app.status);
+            const date = escapeHtml(app.date);
+            const officerNotes = escapeHtml(app.officerNotes || '');
             const step = app.step || 2;
 
             document.getElementById('all-apps-list').innerHTML = `
@@ -2209,12 +2227,12 @@
                             <span class="text-[10px] font-mono text-slate-500 uppercase tracking-wider">Application Reference</span>
                             <h3 class="text-base font-bold text-white flex items-center gap-2 font-mono">
                                 ${ack}
-                                <span class="text-[10px] px-2 py-0.5 rounded-full border ${st.badge}">${app.status}</span>
+                                <span class="text-[10px] px-2 py-0.5 rounded-full border ${st.badge}">${status}</span>
                             </h3>
-                            <p class="text-xs text-brand-300 mt-0.5">${app.service} • Applicant: ${app.applicantName || 'Citizen'}</p>
-                            ${app.officerNotes ? `<p class="text-[11px] text-cyber-amber mt-1 font-mono"><i class="fas fa-clipboard-check"></i> Officer Note: ${app.officerNotes}</p>` : ''}
+                            <p class="text-xs text-brand-300 mt-0.5">${service} • Applicant: ${applicantName}</p>
+                            ${officerNotes ? `<p class="text-[11px] text-cyber-amber mt-1 font-mono"><i class="fas fa-clipboard-check"></i> Officer Note: ${officerNotes}</p>` : ''}
                         </div>
-                        <button onclick="openReceiptModal('${ack}', '${app.service}', '${app.applicantName || 'Citizen'}', '${app.status}')" class="px-3.5 py-1.5 rounded-xl btn-vibe text-white text-xs font-semibold flex items-center gap-1.5">
+                        <button data-app-receipt class="px-3.5 py-1.5 rounded-xl btn-vibe text-white text-xs font-semibold flex items-center gap-1.5">
                             <i class="fas fa-receipt"></i> Digital Pass Slip
                         </button>
                     </div>
@@ -2251,16 +2269,19 @@
                                 <div class="flex items-center gap-3">
                                     <span class="w-2 h-2 rounded-full ${s.dot}"></span>
                                     <div>
-                                        <div class="text-xs font-semibold text-white">${a.service}</div>
-                                        <div class="text-[10px] text-slate-500 font-mono">${a.ackId || 'ACK-'+a.id} • ${a.applicantName || 'Citizen'} • ${a.date}</div>
+                                        <div class="text-xs font-semibold text-white">${escapeHtml(a.service)}</div>
+                                        <div class="text-[10px] text-slate-500 font-mono">${escapeHtml(a.ackId || 'ACK-'+a.id)} • ${escapeHtml(a.applicantName || 'Citizen')} • ${escapeHtml(a.date)}</div>
                                     </div>
                                 </div>
-                                <span class="text-[10px] font-mono px-2 py-0.5 rounded-full border ${s.badge}">${a.status}</span>
+                                <span class="text-[10px] font-mono px-2 py-0.5 rounded-full border ${s.badge}">${escapeHtml(a.status)}</span>
                             </div>
                         `;
                     }).join('')}
                 </div>
             `;
+            document.querySelector('#all-apps-list [data-app-receipt]').addEventListener('click', () => {
+                openReceiptModal(receiptAck, app.service, app.applicantName || 'Citizen', app.status);
+            });
             document.getElementById('apps-modal').classList.remove('hidden');
         }
 
@@ -2270,7 +2291,7 @@
 
         function openReceiptModal(ackId, serviceName, applicantName, status) {
             sfxSuccess();
-            const user = JSON.parse(localStorage.getItem(DB_KEY)) || { name: 'Verified Citizen' };
+            const user = currentUser || { name: 'Verified Citizen' };
             document.getElementById('receipt-id').textContent = ackId;
             document.getElementById('receipt-service').textContent = serviceName;
             document.getElementById('receipt-applicant').textContent = applicantName || user.name;
@@ -2304,8 +2325,8 @@
             btn.disabled = true;
 
             setTimeout(() => {
-                const vault = JSON.parse(localStorage.getItem(VAULT_KEY));
-                const user = JSON.parse(localStorage.getItem(DB_KEY)) || {};
+                const vault = currentPersonalInfo;
+                const user = currentUser || {};
 
                 if (!vault || !vault.name) {
                     showToast('Please save your Citizen Vault Profile first', 'warning');
@@ -2318,7 +2339,7 @@
                 const fields = [
                     { id:'gov-name', val: vault.name || user.name },
                     { id:'gov-dob', val: vault.dob || '1996-08-14' },
-                    { id:'gov-ssn', val: vault.ssn || '8492-3810-9281' },
+                    { id:'gov-ssn', val: vault.ssn || 'XXXX-XXXX-DEMO' },
                     { id:'gov-phone', val: vault.phone || user.phone },
                     { id:'gov-email', val: vault.email || user.email },
                     { id:'gov-address', val: vault.address || 'Indiranagar' },
@@ -2388,7 +2409,7 @@
                 applicantEmail: document.getElementById('gov-email').value.trim() || 'citizen@domain.com',
                 applicantPhone: document.getElementById('gov-phone').value.trim() || '+91 98765 43210',
                 dob: document.getElementById('gov-dob').value || '1996-08-14',
-                ssn: document.getElementById('gov-ssn').value.trim() || 'XXXX-XXXX-XXXX',
+                ssn: document.getElementById('gov-ssn').value.trim() || 'XXXX-XXXX-DEMO',
                 address: document.getElementById('gov-address').value.trim() || 'Citizen Residence',
                 city: document.getElementById('gov-city').value.trim() || 'District',
                 state: document.getElementById('gov-state').value.trim() || 'State',
@@ -2449,8 +2470,8 @@
         }
 
         function syncProfileFormFields() {
-            const vault = JSON.parse(localStorage.getItem(VAULT_KEY)) || {};
-            const user = JSON.parse(localStorage.getItem(DB_KEY)) || {};
+            const vault = currentPersonalInfo;
+            const user = currentUser || {};
             document.getElementById('pi-name').value = vault.name || user.name || '';
             document.getElementById('pi-email').value = vault.email || user.email || '';
             document.getElementById('pi-phone').value = vault.phone || user.phone || '';
@@ -2476,17 +2497,15 @@
                 state: document.getElementById('pi-state').value.trim(),
                 zip: document.getElementById('pi-zip').value.trim()
             };
-            localStorage.setItem(VAULT_KEY, JSON.stringify(personalInfo));
-
-            const user = JSON.parse(localStorage.getItem(DB_KEY)) || {};
+            currentPersonalInfo = personalInfo;
+            const user = currentUser || {};
             user.name = personalInfo.name;
             user.email = personalInfo.email;
             user.phone = personalInfo.phone;
-            localStorage.setItem(DB_KEY, JSON.stringify(user));
 
             showHome(user);
             closeModal('profile-modal');
-            showToast('Encrypted Citizen Vault updated successfully', 'success');
+            showToast('Citizen profile updated for this tab only; it is not stored on this device.', 'success');
         });
 
         // Command Palette (Ctrl+K)
@@ -2587,7 +2606,7 @@
                 keywords: ['ai', 'autofill', 'auto fill', 'auto-fill', 'magic', 'fill', 'prefill', 'how'],
                 actionLabel: 'Edit Vault Details',
                 serviceTrigger: null,
-                answer: 'AI Auto-Fill uses zero-knowledge encryption to store your verified details in your local Citizen Vault. When opening any government service form, the neural agent auto-populates legal name, Aadhaar token, address, and date of birth in 1 click.'
+                answer: 'This demo keeps profile details in page memory only so the Auto-Fill preview can work; they are not encrypted or saved across reloads. Use mock information only, never real Aadhaar, address, or date-of-birth details.'
             },
             {
                 keywords: ['track', 'application', 'status', 'my applications', 'history', 'check', 'ledger'],
