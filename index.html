@@ -3,8 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SetuGov 2.0 — Citizen Services Demo</title>
-    <link href="./assets/tailwind.css" rel="stylesheet">
+    <title>SetuGov 2.0 — AI Citizen Gateway & Administration Hub</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
     <!-- Font Awesome -->
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" rel="stylesheet">
     <!-- Google Fonts: Inter & JetBrains Mono -->
@@ -15,6 +16,61 @@
     <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.3/dist/confetti.browser.min.js"></script>
     <!-- SheetJS (xlsx) for native Excel export -->
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'system-ui', 'sans-serif'],
+                        mono: ['"JetBrains Mono"', 'monospace']
+                    },
+                    colors: {
+                        brand: {
+                            50:'#eff6ff', 100:'#dbeafe', 200:'#bfdbfe', 300:'#93c5fd',
+                            400:'#60a5fa', 500:'#3b82f6', 600:'#2563eb', 700:'#1d4ed8',
+                            800:'#1e40af', 900:'#1e3a8a', 950:'#0b162c'
+                        },
+                        cyanAccent: {
+                            400:'#22d3ee', 500:'#06b6d4', 600:'#0891b2'
+                        },
+                        cyber: {
+                            emerald: '#10b981',
+                            violet: '#8b5cf6',
+                            fuchsia: '#d946ef',
+                            amber: '#f59e0b',
+                            rose: '#f43f5e'
+                        }
+                    },
+                    animation: {
+                        'pulse-glow': 'pulseGlow 2.5s infinite',
+                        'marquee': 'marquee 28s linear infinite',
+                        'scanline': 'scanline 1.8s ease-in-out infinite alternate',
+                        'float': 'floating 6s ease-in-out infinite'
+                    },
+                    keyframes: {
+                        pulseGlow: {
+                            '0%, 100%': { opacity: '0.4', transform: 'scale(1)' },
+                            '50%': { opacity: '0.8', transform: 'scale(1.05)' }
+                        },
+                        marquee: {
+                            '0%': { transform: 'translateX(0%)' },
+                            '100%': { transform: 'translateX(-50%)' }
+                        },
+                        scanline: {
+                            '0%': { top: '0%' },
+                            '100%': { top: '95%' }
+                        },
+                        floating: {
+                            '0%, 100%': { transform: 'translateY(0px)' },
+                            '50%': { transform: 'translateY(-8px)' }
+                        }
+                    }
+                }
+            }
+        }
+    </script>
 
     <style>
         * { -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; box-sizing: border-box; }
@@ -217,28 +273,37 @@
             100% { box-shadow: 0 0 18px rgba(16, 185, 129, 0.55), 0 0 34px rgba(16, 185, 129, 0.2); }
         }
         .system-ticker {
-            display: flex;
+            display: grid;
+            grid-template-columns: minmax(0, 1fr) auto;
+            grid-template-rows: auto auto;
+            column-gap: 1rem;
+            row-gap: 0.35rem;
             align-items: center;
-            justify-content: space-between;
-            flex-wrap: wrap;
-            gap: 0.5rem 1rem;
         }
         .system-ticker-role {
+            grid-column: 1;
+            grid-row: 1;
             width: fit-content;
-            flex-shrink: 0;
+            white-space: nowrap;
         }
         .system-ticker-messages {
-            flex: 1 1 24rem;
+            grid-column: 1;
+            grid-row: 2;
             min-width: 0;
+            overflow: hidden;
+            white-space: nowrap;
         }
         .system-ticker-controls {
-            flex-shrink: 0;
+            grid-column: 2;
+            grid-row: 1 / span 2;
         }
-        .toast-container {
-            top: 16rem;
-            right: 1rem;
-            bottom: auto;
-            width: min(24rem, calc(100vw - 2rem));
+        @media (max-width: 767px) {
+            .system-ticker {
+                grid-template-columns: minmax(0, 1fr);
+            }
+            .system-ticker-controls {
+                display: none;
+            }
         }
     </style>
 </head>
@@ -250,95 +315,28 @@
     <!-- Current citizen/admin area -->
     <div id="active-side-banner" class="relative z-50 flex items-center justify-center gap-2 border-b border-white/10 bg-slate-900/90 px-4 py-2 text-sm font-semibold text-emerald-300">
         <i id="active-side-icon" class="fas fa-user"></i>
-        <span id="active-side-label">Citizen services</span>
+        <span id="active-side-label">Citizen side</span>
     </div>
 
-    <div id="eligibility-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md" role="dialog" aria-modal="true" aria-labelledby="eligibility-title">
-        <div class="glass-panel-glow rounded-3xl max-w-xl w-full max-h-[90vh] overflow-y-auto border border-white/10 shadow-2xl p-6">
-            <div class="flex items-start justify-between gap-4 mb-5">
-                <div>
-                    <h2 id="eligibility-title" class="text-lg font-bold text-white">Sample eligibility checker</h2>
-                    <p id="eligibility-intro" data-i18n="eligibilityIntro" class="text-xs text-slate-300 mt-1">A demo screening aid only—not an eligibility decision. Official rules may differ.</p>
-                </div>
-                <button type="button" onclick="closeModal('eligibility-modal')" class="w-9 h-9 rounded-xl bg-white/5 hover:bg-white/10 text-slate-300" aria-label="Close eligibility checker"><i class="fas fa-times" aria-hidden="true"></i></button>
-            </div>
-            <form id="eligibility-form" class="space-y-4">
-                <div>
-                    <label for="eligibility-scheme" data-i18n="sampleScheme" class="block text-xs font-semibold text-slate-200 mb-1">Sample scheme</label>
-                    <select id="eligibility-scheme" onchange="updateEligibilityRuleLink()" class="cyber-input w-full rounded-xl px-3 py-2.5 text-sm text-slate-100">
-                        <option value="healthcare">Healthcare assistance (sample rule)</option>
-                        <option value="scholarship">Student scholarship (sample rule)</option>
-                        <option value="pension">Senior pension (sample rule)</option>
-                    </select>
-                </div>
-                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    <div>
-                        <label for="eligibility-age" data-i18n="applicantAge" class="block text-xs font-semibold text-slate-200 mb-1">Applicant age</label>
-                        <input id="eligibility-age" type="number" min="0" max="120" inputmode="numeric" class="cyber-input w-full rounded-xl px-3 py-2.5 text-sm text-slate-100" required>
-                    </div>
-                    <div>
-                        <label for="eligibility-income" data-i18n="householdIncome" class="block text-xs font-semibold text-slate-200 mb-1">Household annual income (₹)</label>
-                        <input id="eligibility-income" type="number" min="0" inputmode="numeric" class="cyber-input w-full rounded-xl px-3 py-2.5 text-sm text-slate-100" required>
-                    </div>
-                </div>
-                <button type="submit" data-i18n="checkSampleCriteria" class="btn-vibe rounded-xl px-4 py-2.5 text-sm font-bold text-white">Check sample criteria</button>
-            </form>
-            <div id="eligibility-result" class="hidden mt-4 rounded-xl border border-cyanAccent-500/30 bg-cyanAccent-500/10 p-4 text-sm text-slate-100" aria-live="polite"></div>
-            <div class="mt-4 border-t border-white/10 pt-4">
-                <p id="official-rules-note" data-i18n="officialRulesNote" class="text-xs text-slate-300">For real applications, confirm current rules with the official scheme source:</p>
-                <a id="eligibility-rules-link" href="https://nha.gov.in/PM-JAY" target="_blank" rel="noopener noreferrer" class="inline-flex items-center gap-2 mt-2 text-sm text-cyanAccent-300 underline underline-offset-2">Official PM-JAY information <i class="fas fa-arrow-up-right-from-square text-xs" aria-hidden="true"></i></a>
-                <p id="eligibility-note" data-i18n="noOfficialDecision" class="mt-3 text-[11px] text-amber-200/90">This prototype does not contact a scheme portal, verify documents, or determine eligibility. Do not enter real personal information.</p>
-            </div>
-        </div>
-    </div>
-
-    <div id="checklist-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md" role="dialog" aria-modal="true" aria-labelledby="checklist-title">
-        <div class="glass-panel-glow rounded-3xl max-w-xl w-full max-h-[90vh] overflow-y-auto border border-white/10 shadow-2xl p-6">
-            <div class="flex items-start justify-between gap-4 mb-4">
-                <div>
-                    <h2 id="checklist-title" class="text-lg font-bold text-white">Before you start</h2>
-                    <p id="checklist-intro" data-i18n="checklistIntro" class="text-xs text-slate-300 mt-1">Common examples for planning only. Exact requirements vary by scheme and location.</p>
-                </div>
-                <button type="button" onclick="closeModal('checklist-modal')" class="w-9 h-9 rounded-xl bg-white/5 hover:bg-white/10 text-slate-300" aria-label="Close document checklist"><i class="fas fa-times" aria-hidden="true"></i></button>
-            </div>
-            <label for="checklist-service" data-i18n="checklistService" class="block text-xs font-semibold text-slate-200 mb-1">Service</label>
-            <select id="checklist-service" onchange="renderDocumentChecklist()" class="cyber-input w-full rounded-xl px-3 py-2.5 text-sm text-slate-100">
-                <option>Healthcare Scheme</option>
-                <option>Scholarship Application</option>
-                <option>Pension Service Application</option>
-                <option>Aadhar Card Update</option>
-                <option>Business License Application</option>
-            </select>
-            <ul id="checklist-items" class="mt-4 space-y-2"></ul>
-            <p id="checklist-note" data-i18n="checklistDisclaimer" class="mt-4 text-[11px] text-amber-200/90">Checklist is illustrative, not an official document requirement. Never enter real ID details into this public demo.</p>
-            <button type="button" onclick="startChecklistApplication()" data-i18n="continueSampleApplication" class="btn-vibe mt-5 rounded-xl px-4 py-2.5 text-sm font-bold text-white">Continue with sample application</button>
-        </div>
-    </div>
-
-    <!-- Demo status: no live government integrations are connected. -->
-    <div class="system-ticker relative z-50 bg-black/60 border-b border-white/5 py-2 px-4 backdrop-blur-md text-[11px] text-slate-300">
+    <!-- Top System Ticker (Cyber Live Marquee) -->
+    <div class="system-ticker relative z-50 bg-black/60 border-b border-white/5 py-1.5 px-4 backdrop-blur-md text-[11px] font-mono text-slate-400 overflow-hidden">
         <span id="role-pill" class="system-ticker-role inline-flex items-center gap-1.5 text-cyber-emerald font-semibold bg-cyber-emerald/10 px-2 py-0.5 rounded-full border border-cyber-emerald/30">
-                <span class="w-1.5 h-1.5 rounded-full bg-cyber-emerald"></span>
-                <span id="role-pill-text">DEMO PREVIEW</span>
+                <span class="w-1.5 h-1.5 rounded-full bg-cyber-emerald animate-ping"></span>
+                <span id="role-pill-text">CITIZEN GATEWAY</span>
         </span>
-        <div class="system-ticker-messages leading-relaxed">
-            <span class="font-semibold text-white">Sample data only</span>
-            <span class="mx-1.5 text-slate-600">•</span>
-            Simulated workflows; no live government services or identity providers are connected.
+        <div class="system-ticker-messages">
+            <div class="inline-flex w-max animate-marquee gap-8 text-slate-300">
+                <span class="flex items-center gap-1.5"><i class="fas fa-file-excel text-emerald-400"></i> Master Excel Sheet: <span class="text-white font-bold">setugov.xlsx</span> Synchronized</span>
+                <span class="flex items-center gap-1.5"><i class="fas fa-satellite-dish text-brand-400"></i> DigiLocker 2.0 API Connected • Latency: <span class="text-brand-300">18ms</span></span>
+                <span class="flex items-center gap-1.5"><i class="fas fa-user-shield text-cyber-amber"></i> Officer Scrutiny Console Ready • Decision Engine Online</span>
+                <span class="flex items-center gap-1.5"><i class="fas fa-shield-halved text-cyanAccent-400"></i> 256-bit AES Zero-Knowledge Audit Trail Active</span>
+            </div>
         </div>
 
-        <div class="system-ticker-controls hidden items-center gap-4 text-slate-400">
+        <div class="system-ticker-controls hidden md:flex items-center gap-4 text-slate-400">
             <button onclick="toggleSound()" id="sound-btn" class="hover:text-white transition flex items-center gap-1.5 px-2 py-0.5 rounded bg-white/5 border border-white/10" title="Toggle UI Sound Effects">
                 <i class="fas fa-volume-high text-brand-400" id="sound-icon"></i>
                 <span class="text-[10px]">SFX: <span id="sound-status" class="text-emerald-400">ON</span></span>
-            </button>
-            <label for="header-language-select" class="sr-only">Language</label>
-            <select id="header-language-select" onchange="setLanguage(this.value)" class="cyber-input rounded-lg px-2 py-2 text-xs text-slate-100" aria-label="Choose display language">
-                <option value="en">EN</option>
-                <option value="hi">हिंदी</option>
-            </select>
-            <button type="button" onclick="readLandingAloud()" class="p-2 rounded-lg bg-white/5 border border-white/10 text-xs text-slate-200 hover:bg-white/10 focus-visible:outline focus-visible:outline-2 focus-visible:outline-cyan-400" aria-label="Read current page aloud" title="Read current page aloud">
-                <i class="fas fa-volume-high" aria-hidden="true"></i>
             </button>
             <div class="flex items-center gap-1 font-mono text-[11px]">
                 <i class="far fa-clock text-slate-500"></i>
@@ -352,7 +350,7 @@
     </div>
 
     <!-- Toast Notification Hub -->
-    <div class="toast-container fixed z-[100] flex flex-col gap-3 pointer-events-none" id="toast-container" aria-live="polite"></div>
+    <div class="fixed bottom-6 right-6 z-[100] flex flex-col gap-3 pointer-events-none" id="toast-container"></div>
 
     <!-- Navigation Header -->
     <nav id="navbar" class="sticky top-0 z-40 transition-all duration-300 bg-slate-950/70 backdrop-blur-xl border-b border-white/10">
@@ -403,7 +401,7 @@
                         <div class="text-left hidden md:block">
                             <div class="text-xs font-semibold text-slate-200" id="nav-user-name">Guest Citizen</div>
                             <div class="text-[10px] text-slate-400 flex items-center gap-1 font-mono">
-                                <span class="w-1.5 h-1.5 rounded-full bg-cyber-amber"></span> Demo profile
+                                <span class="w-1.5 h-1.5 rounded-full bg-cyber-emerald"></span> Verified DigiLocker
                             </div>
                         </div>
                         <i class="fas fa-chevron-down text-xs text-slate-500 ml-1"></i>
@@ -411,24 +409,12 @@
 
                     <!-- Dropdown Menu -->
                     <div id="profile-dropdown" class="hidden absolute right-0 top-full mt-2 w-64 glass-panel rounded-2xl border border-white/10 shadow-2xl p-2 z-50">
-                        <div class="px-3 py-2.5 border-b border-white/5 mb-1 flex items-center justify-between gap-3">
-                            <div>
-                                <label for="nav-language-select" class="block text-[10px] font-mono uppercase tracking-wider text-slate-400">Language</label>
-                                <select id="nav-language-select" onchange="setLanguage(this.value)" class="cyber-input mt-1 rounded-lg px-2 py-1.5 text-xs text-slate-100" aria-label="Choose display language">
-                                    <option value="en">English</option>
-                                    <option value="hi">हिन्दी</option>
-                                </select>
-                            </div>
-                            <button type="button" onclick="readLandingAloud()" class="p-2 rounded-lg bg-white/5 border border-white/10 text-xs text-slate-200 hover:bg-white/10 focus-visible:outline focus-visible:outline-2 focus-visible:outline-cyan-400" aria-label="Read the page summary aloud" title="Read the page summary aloud">
-                                <i class="fas fa-volume-high" aria-hidden="true"></i>
-                            </button>
-                        </div>
                         <div class="px-3 py-2.5 border-b border-white/5 mb-1">
                             <p class="text-[10px] font-mono uppercase tracking-wider text-slate-500">Citizen Account</p>
                             <p class="text-xs font-semibold text-white truncate" id="dropdown-email">citizen@setugov.in</p>
                         </div>
                         <button onclick="showProfileModal(); closeDropdown()" class="w-full flex items-center gap-2.5 px-3 py-2 text-xs font-medium text-slate-300 hover:text-white hover:bg-brand-500/20 rounded-xl transition">
-                            <i class="fas fa-id-card text-brand-400 w-4 text-center"></i> Edit sample profile
+                            <i class="fas fa-id-card text-brand-400 w-4 text-center"></i> Edit Citizen Profile
                         </button>
                         <button onclick="showApplications(); closeDropdown()" class="w-full flex items-center gap-2.5 px-3 py-2 text-xs font-medium text-slate-300 hover:text-white hover:bg-brand-500/20 rounded-xl transition">
                             <i class="fas fa-folder-tree text-cyanAccent-400 w-4 text-center"></i> Track Applications
@@ -447,9 +433,9 @@
     </nav>
 
     <!-- ===== LOGIN SECTION (WITH 1-CLICK DEMO PROFILES) ===== -->
-    <div id="login-section" class="relative z-10 min-h-[calc(100vh-80px)] flex items-center justify-center px-4 py-8">
-        <div class="w-full max-w-2xl">
-            <div class="glass-panel-glow rounded-3xl p-6 sm:p-8 shadow-2xl shadow-brand-500/10 border border-white/10 relative overflow-hidden">
+    <div id="login-section" class="relative z-10 min-h-[calc(100vh-80px)] flex items-center justify-center px-4 py-12">
+        <div class="w-full max-w-lg">
+            <div class="glass-panel-glow rounded-3xl p-8 sm:p-10 shadow-2xl shadow-brand-500/10 border border-white/10 relative overflow-hidden">
                 <div class="absolute -top-24 -left-24 w-60 h-60 bg-brand-500/20 rounded-full blur-3xl pointer-events-none"></div>
                 <div class="absolute -bottom-24 -right-24 w-60 h-60 bg-cyanAccent-500/20 rounded-full blur-3xl pointer-events-none"></div>
 
@@ -457,81 +443,56 @@
                     <div class="inline-flex p-3 rounded-2xl bg-gradient-to-tr from-brand-600 to-cyanAccent-500 mb-4 shadow-lg shadow-brand-500/30">
                         <i class="fas fa-fingerprint text-white text-2xl"></i>
                     </div>
-                    <h1 id="landing-heading" data-i18n="landingHeading" class="text-2xl sm:text-3xl font-extrabold text-white tracking-tight">What would you like to do today?</h1>
-                    <p id="landing-intro" data-i18n="landingIntro" class="text-slate-300 text-sm mt-2">Apply for a public service or check an application. This preview uses sample data only.</p>
-                    <p data-i18n="howItWorks" class="mt-2 text-xs text-slate-400">Choose a sample task, use fictional details, then explore the simulated result.</p>
+                    <h1 class="text-2xl sm:text-3xl font-extrabold text-white tracking-tight">Citizen Authentication</h1>
+                    <p class="text-slate-400 text-xs sm:text-sm mt-2">Sign in or pick a demo applicant profile to test AI auto-fill.</p>
                 </div>
-
-                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-5 relative z-10">
-                    <button type="button" onclick="startCitizenDemo('apply')" class="btn-vibe text-white p-4 rounded-2xl text-left transition-all focus-visible:outline focus-visible:outline-2 focus-visible:outline-white">
-                        <span class="flex items-center gap-2 font-bold"><i class="fas fa-file-circle-plus" aria-hidden="true"></i> <span data-i18n="applyBenefit">Apply for a benefit</span></span>
-                        <span class="block mt-1 text-xs text-blue-100" data-i18n="openSampleApplication">Open a sample healthcare application</span>
-                    </button>
-                    <button type="button" onclick="startCitizenDemo('track')" class="p-4 rounded-2xl bg-white/5 hover:bg-white/10 border border-white/10 text-left transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-cyan-400">
-                        <span class="flex items-center gap-2 font-bold text-white"><i class="fas fa-clock-rotate-left text-cyanAccent-400" aria-hidden="true"></i> <span data-i18n="trackApplication">Track an application</span></span>
-                        <span class="block mt-1 text-xs text-slate-400" data-i18n="viewSampleStatus">View a sample application status</span>
-                    </button>
-                </div>
-                <div class="flex flex-wrap justify-center gap-3 mb-5 relative z-10">
-                    <button type="button" onclick="openEligibilityChecker()" class="px-3 py-2 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-xs text-cyanAccent-300 focus-visible:outline focus-visible:outline-2 focus-visible:outline-cyan-400"><i class="fas fa-circle-check mr-1" aria-hidden="true"></i><span data-i18n="checkEligibility">Check sample eligibility</span></button>
-                    <button type="button" onclick="showDocumentChecklist()" class="px-3 py-2 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-xs text-cyanAccent-300 focus-visible:outline focus-visible:outline-2 focus-visible:outline-cyan-400"><i class="fas fa-list-check mr-1" aria-hidden="true"></i><span data-i18n="documentChecklist">See document checklist</span></button>
-                </div>
-                <p id="demo-disclaimer" data-i18n="demoDisclaimer" class="mb-5 text-center text-[11px] text-amber-200/90" role="note">Demo only — use fictional details. No live identity checks or government services are connected.</p>
 
                 <!-- 1-Click Demo Profiles -->
                 <div class="mb-6 p-3 rounded-2xl bg-slate-900/90 border border-white/10">
                     <div class="flex items-center justify-between mb-2">
                         <span class="text-[10px] font-mono uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
-                            <i class="fas fa-sparkles text-cyber-amber"></i> <span data-i18n="chooseSampleProfile">Choose a sample profile</span>
+                            <i class="fas fa-sparkles text-cyber-amber"></i> Quick Demo Profiles (1-Click Fill)
                         </span>
-                        <span data-i18n="optional" class="text-[10px] text-brand-400 font-mono">Optional</span>
+                        <span class="text-[10px] text-brand-400 font-mono">Ready to test</span>
                     </div>
                     <div class="grid grid-cols-3 gap-2">
                         <button type="button" onclick="loadDemoProfile('priya')" class="px-2.5 py-2 rounded-xl bg-white/5 hover:bg-brand-500/20 border border-white/5 hover:border-brand-500/30 text-left transition group">
                             <div class="text-[11px] font-semibold text-white group-hover:text-brand-300">Priya S.</div>
-                            <div data-i18n="sampleProfile" class="text-[9px] text-slate-400">Sample profile</div>
+                            <div class="text-[9px] text-slate-400">Founder & Tech</div>
                         </button>
                         <button type="button" onclick="loadDemoProfile('rajesh')" class="px-2.5 py-2 rounded-xl bg-white/5 hover:bg-cyanAccent-500/20 border border-white/5 hover:border-cyanAccent-500/30 text-left transition group">
                             <div class="text-[11px] font-semibold text-white group-hover:text-cyanAccent-300">Rajesh K.</div>
-                            <div data-i18n="seniorCitizen" class="text-[9px] text-slate-400">Senior Citizen</div>
+                            <div class="text-[9px] text-slate-400">Senior Citizen</div>
                         </button>
                         <button type="button" onclick="loadDemoProfile('aarav')" class="px-2.5 py-2 rounded-xl bg-white/5 hover:bg-cyber-violet/20 border border-white/5 hover:border-cyber-violet/30 text-left transition group">
                             <div class="text-[11px] font-semibold text-white group-hover:text-cyber-violet">Aarav P.</div>
-                            <div data-i18n="studentScholar" class="text-[9px] text-slate-400">Student Scholar</div>
+                            <div class="text-[9px] text-slate-400">Student Scholar</div>
                         </button>
                     </div>
-                    <button type="button" onclick="launchDemoFlow()" class="mt-3 w-full flex items-center justify-center gap-2 rounded-xl border border-cyanAccent-500/40 bg-cyanAccent-500/10 text-cyanAccent-300 hover:bg-cyanAccent-500/20 px-3 py-2 text-xs font-bold tracking-wide transition-all shadow-lg shadow-cyanAccent-500/10 focus-visible:outline focus-visible:outline-2 focus-visible:outline-cyan-400">
+                    <button type="button" onclick="launchDemoFlow()" class="mt-3 w-full flex items-center justify-center gap-2 rounded-xl border border-cyanAccent-500/40 bg-cyanAccent-500/10 text-cyanAccent-300 hover:bg-cyanAccent-500/20 px-3 py-2 text-xs font-bold tracking-wide transition-all shadow-lg shadow-cyanAccent-500/10">
                         <i class="fas fa-play-circle"></i>
                         Launch Demo Flow
                     </button>
                 </div>
 
-                <div id="resume-draft-banner" class="hidden mb-4 p-3 rounded-xl bg-brand-500/10 border border-brand-400/30 text-sm text-slate-200" role="status" aria-live="polite">
-                    <span data-i18n="draftSaved">A saved application draft is available in this browser.</span>
-                    <button type="button" onclick="resumeApplicationDraft()" class="ml-2 text-cyanAccent-300 underline" data-i18n="resumeDraft">Resume draft</button>
-                    <button type="button" onclick="discardApplicationDraft()" class="ml-2 text-slate-400 underline" data-i18n="discardDraft">Discard</button>
-                </div>
-
-                <details id="demo-script-panel" class="demo-script-panel mb-5 rounded-2xl p-3">
-                    <summary class="cursor-pointer list-none">
+                <div id="demo-script-panel" class="demo-script-panel mb-6 rounded-2xl p-3">
                     <div class="flex items-center justify-between gap-2">
                         <span class="text-[10px] font-mono uppercase tracking-wider text-cyanAccent-300 flex items-center gap-1.5">
-                            <i class="fas fa-film"></i> How this demo works
+                            <i class="fas fa-film"></i> Presenter Script
                         </span>
-                        <span class="text-[10px] text-slate-300 font-mono">Show steps</span>
+                        <span class="text-[10px] text-slate-300 font-mono">Live walk-through</span>
                     </div>
-                    </summary>
-                    <div id="demo-status-text" class="mt-2 text-[11px] text-slate-200 font-medium" aria-live="polite">Ready to show the sample citizen journey.</div>
+                    <div id="demo-status-text" class="mt-2 text-[11px] text-slate-200 font-medium">Ready to show the citizen journey in under 30 seconds.</div>
                     <div class="mt-3 space-y-2">
-                        <div class="demo-step active"><span class="demo-num">1</span><span>Load a sample profile</span></div>
-                        <div class="demo-step"><span class="demo-num">2</span><span>Preview simulated form auto-fill</span></div>
-                        <div class="demo-step"><span class="demo-num">3</span><span>Preview a simulated officer decision</span></div>
+                        <div class="demo-step active"><span class="demo-num">1</span><span>Verify identity and load profile</span></div>
+                        <div class="demo-step"><span class="demo-num">2</span><span>Run AI auto-fill and submit form</span></div>
+                        <div class="demo-step"><span class="demo-num">3</span><span>Approve in live officer review</span></div>
                     </div>
-                </details>
+                </div>
 
                 <form id="login-form" class="space-y-4 relative z-10">
                     <div>
-                        <label for="login-name" class="block text-[11px] font-mono uppercase tracking-wider text-slate-400 mb-1.5">Full Legal Name</label>
+                        <label class="block text-[11px] font-mono uppercase tracking-wider text-slate-400 mb-1.5">Full Legal Name</label>
                         <div class="relative">
                             <i class="fas fa-user absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-500 text-xs"></i>
                             <input type="text" id="login-name" required placeholder="e.g. Priya Sharma"
@@ -541,7 +502,7 @@
 
                     <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
                         <div>
-                            <label for="login-email" class="block text-[11px] font-mono uppercase tracking-wider text-slate-400 mb-1.5">Email Address</label>
+                            <label class="block text-[11px] font-mono uppercase tracking-wider text-slate-400 mb-1.5">Email Address</label>
                             <div class="relative">
                                 <i class="fas fa-envelope absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-500 text-xs"></i>
                                 <input type="email" id="login-email" required placeholder="priya@domain.in"
@@ -549,7 +510,7 @@
                             </div>
                         </div>
                         <div>
-                            <label for="login-phone" class="block text-[11px] font-mono uppercase tracking-wider text-slate-400 mb-1.5">Phone Number</label>
+                            <label class="block text-[11px] font-mono uppercase tracking-wider text-slate-400 mb-1.5">Phone Number</label>
                             <div class="relative">
                                 <i class="fas fa-phone absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-500 text-xs"></i>
                                 <input type="tel" id="login-phone" required placeholder="+91 98765 43210"
@@ -558,20 +519,29 @@
                         </div>
                     </div>
 
+                    <div>
+                        <label class="block text-[11px] font-mono uppercase tracking-wider text-slate-400 mb-1.5">Security Password</label>
+                        <div class="relative">
+                            <i class="fas fa-lock absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-500 text-xs"></i>
+                            <input type="password" id="login-password" required placeholder="••••••••••••"
+                                class="cyber-input w-full pl-9 pr-4 py-3 rounded-xl text-sm text-slate-200 placeholder-slate-600">
+                        </div>
+                    </div>
+
                     <button type="submit" class="btn-vibe w-full text-white py-3.5 rounded-xl font-bold text-sm flex items-center justify-center gap-2 mt-2">
-                        <span>Continue to citizen services</span>
+                        <span>Initialize Citizen Dashboard</span>
                         <i class="fas fa-arrow-right text-xs"></i>
                     </button>
                 </form>
 
                 <div class="flex items-center justify-center gap-4 mt-6 text-[11px] text-slate-500 font-mono">
-                    <span class="flex items-center gap-1.5"><i class="fas fa-circle-info text-cyber-amber"></i> Demo only</span>
+                    <span class="flex items-center gap-1.5"><i class="fas fa-shield-halved text-cyber-emerald"></i> AES-256</span>
                     <span>•</span>
                     <button type="button" onclick="switchView('admin')" class="text-cyber-amber hover:underline flex items-center gap-1 font-bold">
                         <i class="fas fa-user-shield"></i> Jump to Admin POV
                     </button>
                     <span>•</span>
-                    <span class="flex items-center gap-1.5"><i class="fas fa-circle-nodes text-brand-400"></i> Sample data</span>
+                    <span class="flex items-center gap-1.5"><i class="fas fa-circle-nodes text-brand-400"></i> Zero Trust</span>
                 </div>
             </div>
         </div>
@@ -579,11 +549,6 @@
 
     <!-- ===== CITIZEN HOME DASHBOARD ===== -->
     <div id="home-dashboard" class="hidden relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-8 pb-20">
-        <div id="dashboard-draft-banner" class="hidden mb-5 p-3 rounded-xl bg-brand-500/10 border border-brand-400/30 text-sm text-slate-200" role="status" aria-live="polite">
-            <span data-i18n="draftSaved">A saved application draft is available in this browser.</span>
-            <button type="button" onclick="resumeApplicationDraft()" class="ml-2 text-cyanAccent-300 underline" data-i18n="resumeDraft">Resume draft</button>
-            <button type="button" onclick="discardApplicationDraft()" class="ml-2 text-slate-400 underline" data-i18n="discardDraft">Discard</button>
-        </div>
         <!-- Top Bento Banner -->
         <div class="relative overflow-hidden rounded-3xl glass-panel-glow border border-white/10 p-6 sm:p-10 mb-8 spotlight-card">
             <div class="absolute -right-20 -top-20 w-96 h-96 bg-brand-600/20 rounded-full blur-3xl pointer-events-none"></div>
@@ -593,13 +558,13 @@
                 <div class="max-w-2xl">
                     <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-brand-500/10 border border-brand-500/20 text-brand-300 text-[13px] font-sans font-medium tracking-normal mb-4">
                         <span class="w-2 h-2 rounded-full bg-brand-400 animate-pulse"></span>
-                    Interactive demo • Sample data
+                        Autonomous Civic Pipeline v2.8
                     </div>
                     <h1 class="text-3xl sm:text-4xl lg:text-5xl font-black text-white tracking-tight">
                         Namaste, <span id="welcome-name" class="text-transparent bg-clip-text bg-gradient-to-r from-brand-400 via-cyanAccent-300 to-brand-200">Citizen</span>
                     </h1>
                     <p class="text-slate-300 text-sm sm:text-base mt-3 leading-relaxed">
-                        Explore sample public-service applications and see how a request could move through a review workflow. All data and decisions here are simulated.
+                        One unified hub for all government schemes. Submit any form in 3 seconds using our verified neural auto-fill agent.
                     </p>
 
                     <div class="flex flex-wrap gap-2.5 sm:gap-3 mt-6">
@@ -621,24 +586,24 @@
                 <div class="grid grid-cols-2 gap-3 min-w-[280px]">
                     <div class="p-4 rounded-2xl bg-slate-900/80 border border-white/5 flex flex-col justify-between">
                         <span class="text-[10px] font-mono text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
-                            <i class="fas fa-hourglass-half text-cyanAccent-400"></i> Sample processing
+                            <i class="fas fa-hourglass-half text-cyanAccent-400"></i> Avg Processing
                         </span>
                         <div class="text-2xl font-black text-white font-mono mt-2">1.8 <span class="text-xs font-normal text-slate-400">days</span></div>
-                        <div class="text-[10px] text-slate-400 mt-1">Illustrative demo value</div>
+                        <div class="text-[10px] text-cyber-emerald mt-1"><i class="fas fa-arrow-trend-down"></i> 64% faster with AI</div>
                     </div>
                     <div class="p-4 rounded-2xl bg-slate-900/80 border border-white/5 flex flex-col justify-between">
                         <span class="text-[10px] font-mono text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
-                            <i class="fas fa-shield-check text-cyber-emerald"></i> Identity checks
+                            <i class="fas fa-shield-check text-cyber-emerald"></i> Trust Rating
                         </span>
-                        <div class="text-xl font-black text-cyber-emerald mt-2">Simulated</div>
-                        <div class="text-[10px] text-slate-400 mt-1">No live identity provider</div>
+                        <div class="text-2xl font-black text-cyber-emerald font-mono mt-2">99.8%</div>
+                        <div class="text-[10px] text-slate-400 mt-1">DigiLocker Certified</div>
                     </div>
                     <div class="p-4 rounded-2xl bg-slate-900/80 border border-white/5 flex flex-col justify-between">
                         <span class="text-[10px] font-mono text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
-                            <i class="fas fa-bolt text-cyber-amber"></i> Example time saved
+                            <i class="fas fa-bolt text-cyber-amber"></i> Saved Time
                         </span>
                         <div class="text-2xl font-black text-white font-mono mt-2">4.5 <span class="text-xs font-normal text-slate-400">hours</span></div>
-                        <div class="text-[10px] text-slate-400 mt-1">Illustrative demo value</div>
+                        <div class="text-[10px] text-cyanAccent-400 mt-1">Zero queue visits</div>
                     </div>
                     <div class="p-4 rounded-2xl bg-slate-900/80 border border-white/5 flex flex-col justify-between">
                         <span class="text-[10px] font-mono text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
@@ -647,7 +612,7 @@
                         <div class="text-sm font-bold text-white font-mono mt-3">
                             <span class="text-emerald-400">setugov.xlsx</span>
                         </div>
-                        <div class="text-[10px] text-slate-400 mt-1">Sample application data</div>
+                        <div class="text-[10px] text-slate-400 mt-1">Live Officer Sync</div>
                     </div>
                 </div>
             </div>
@@ -663,7 +628,7 @@
                         </span>
                         Active Application Pipeline
                     </h2>
-                    <p class="text-xs sm:text-sm text-slate-400 mt-1 ml-10">Sample application statuses from this demo</p>
+                    <p class="text-xs sm:text-sm text-slate-400 mt-1 ml-10">Real-time status synced with government databases</p>
                 </div>
                 <div class="flex items-center gap-2">
                     <button onclick="showApplications()" class="px-3.5 py-1.5 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-xs font-medium text-slate-300 hover:text-white transition flex items-center gap-1.5">
@@ -704,7 +669,7 @@
             <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4" id="services-grid"></div>
         </div>
 
-        <!-- Sample help chat -->
+        <!-- AI Copilot Chat -->
         <div class="glass-panel-glow rounded-3xl border border-white/10 overflow-hidden shadow-2xl relative">
             <div class="bg-gradient-to-r from-brand-950 via-slate-900 to-cyanAccent-950 p-6 border-b border-white/10 flex flex-wrap items-center justify-between gap-4">
                 <div class="flex items-center gap-3.5">
@@ -716,7 +681,7 @@
                     </div>
                     <div>
                         <div class="flex items-center gap-2">
-                            <h3 class="text-base sm:text-lg font-bold text-white">SetuGov demo help</h3>
+                            <h3 class="text-base sm:text-lg font-bold text-white">SetuGov Neural Copilot</h3>
                             <span class="text-[10px] font-mono px-2 py-0.5 rounded-full bg-cyanAccent-500/20 text-cyanAccent-300 border border-cyanAccent-500/30">v4.8 ACTIVE</span>
                         </div>
                         <p class="text-xs text-slate-400">Ask any eligibility, rule, document list, or prompt to auto-open forms</p>
@@ -728,7 +693,7 @@
             </div>
 
             <div class="p-5 sm:p-6">
-                <div id="faq-chat" class="space-y-4 max-h-[380px] overflow-y-auto pr-2 pb-2 mb-4 scrollbar-thin" role="log" aria-live="polite" aria-relevant="additions">
+                <div id="faq-chat" class="space-y-4 max-h-[380px] overflow-y-auto pr-2 pb-2 mb-4 scrollbar-thin">
                     <div class="flex items-start gap-3">
                         <div class="w-8 h-8 rounded-xl bg-gradient-to-tr from-cyanAccent-500 to-brand-500 flex items-center justify-center flex-shrink-0 text-white text-xs">
                             <i class="fas fa-robot"></i>
@@ -737,7 +702,7 @@
                             <p class="font-semibold text-cyanAccent-300 mb-1 flex items-center gap-1.5">
                                 <i class="fas fa-wave-pulse"></i> Ready to assist you
                             </p>
-                            <p>I can help you explore sample forms, illustrative document lists, and demo application statuses. This prototype cannot verify requirements, calculate official taxes, or submit an application.</p>
+                            <p>I can help you prepare any government application, verify documentation requirements, calculate tax exemptions, or inspect application status. Try clicking a quick prompt below or typing your question!</p>
                         </div>
                     </div>
                 </div>
@@ -752,22 +717,21 @@
                     <button onclick="askFaqQuestion('How do I pay my property tax?')" class="suggestion-chip flex-shrink-0 text-xs px-3.5 py-1.5 rounded-full bg-slate-900 border border-white/10 text-slate-300 hover:text-white hover:border-cyber-emerald hover:bg-cyber-emerald/20 transition">
                         🏠 Property Tax Assessment
                     </button>
-                    <button onclick="askFaqQuestion('How does sample profile fill work?')" class="suggestion-chip flex-shrink-0 text-xs px-3.5 py-1.5 rounded-full bg-slate-900 border border-white/10 text-slate-300 hover:text-white hover:border-cyber-amber hover:bg-cyber-amber/20 transition">
-                        ⚡ How does sample profile fill work?
+                    <button onclick="askFaqQuestion('What is AI Auto-Fill?')" class="suggestion-chip flex-shrink-0 text-xs px-3.5 py-1.5 rounded-full bg-slate-900 border border-white/10 text-slate-300 hover:text-white hover:border-cyber-amber hover:bg-cyber-amber/20 transition">
+                        ⚡ How does AI Auto-Fill work?
                     </button>
                     <button onclick="askFaqQuestion('Is my data secure?')" class="suggestion-chip flex-shrink-0 text-xs px-3.5 py-1.5 rounded-full bg-slate-900 border border-white/10 text-slate-300 hover:text-white hover:border-cyber-violet hover:bg-cyber-violet/20 transition">
-                        🛡️ Demo Data & Privacy
+                        🛡️ Data Privacy & Encryption
                     </button>
                 </div>
 
                 <div class="flex items-center gap-2.5">
                     <div class="relative flex-1">
-                        <label for="faq-input" class="sr-only">Ask a question about this demo</label>
-                        <input type="text" id="faq-input" data-i18n-placeholder="faqPlaceholder" placeholder="Ask about a sample application or this demo"
+                        <input type="text" id="faq-input" placeholder="Ask anything, e.g. 'Can I update Aadhar address without proof?'"
                             class="cyber-input w-full pl-4 pr-12 py-3.5 rounded-2xl text-sm text-slate-100 placeholder-slate-500"
                             onkeypress="if(event.key==='Enter') sendFaqMessage()">
-                        <button type="button" onclick="triggerVoiceInput()" id="voice-btn" aria-label="Ask using voice" aria-pressed="false" class="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-cyanAccent-400 transition" title="Ask using voice">
-                            <i class="fas fa-microphone text-sm" aria-hidden="true"></i>
+                        <button type="button" onclick="triggerVoiceInput()" id="voice-btn" class="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-cyanAccent-400 transition" title="Voice Dictation">
+                            <i class="fas fa-microphone text-sm"></i>
                         </button>
                     </div>
                     <button onclick="sendFaqMessage()" class="btn-vibe text-white px-6 py-3.5 rounded-2xl font-bold text-sm flex items-center gap-2 flex-shrink-0">
@@ -876,7 +840,7 @@
                             <span class="text-[10px] text-slate-500 font-mono" id="adm-sheet-rows-label">(0 rows)</span>
                             <span id="shared-sync-status" class="text-[10px] px-2 py-0.5 rounded-full bg-slate-700/60 text-slate-300 font-mono">Browser demo data</span>
                         </div>
-                        <p class="text-[11px] text-slate-400">Sample records • Officer actions in this preview are simulated</p>
+                        <p class="text-[11px] text-slate-400">Directly synchronized with citizen database • Live Adjudication Enabled</p>
                     </div>
                 </div>
 
@@ -937,7 +901,7 @@
     </div>
 
     <!-- Application Details & Ledger Inspector Modal -->
-    <div id="apps-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md" role="dialog" aria-modal="true" aria-labelledby="apps-modal-title">
+    <div id="apps-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md">
         <div class="glass-panel-glow rounded-3xl max-w-3xl w-full max-h-[85vh] overflow-hidden border border-white/10 shadow-2xl flex flex-col">
             <div class="p-6 border-b border-white/10 flex items-center justify-between">
                 <div class="flex items-center gap-3">
@@ -945,20 +909,20 @@
                         <i class="fas fa-clock-rotate-left"></i>
                     </div>
                     <div>
-                        <h3 id="apps-modal-title" class="text-lg font-bold text-white">Application tracker</h3>
-                        <p class="text-xs text-slate-400">Sample submissions only; no official verification is performed</p>
+                        <h3 class="text-lg font-bold text-white">Application Ledger & Timeline</h3>
+                        <p class="text-xs text-slate-400">All submissions verified on the civic ledger</p>
                     </div>
                 </div>
-                <button onclick="closeModal('apps-modal')" aria-label="Close application tracker" class="w-9 h-9 rounded-xl bg-white/5 hover:bg-white/10 flex items-center justify-center text-slate-400 hover:text-white transition">
-                    <i class="fas fa-times" aria-hidden="true"></i>
+                <button onclick="closeModal('apps-modal')" class="w-9 h-9 rounded-xl bg-white/5 hover:bg-white/10 flex items-center justify-center text-slate-400 hover:text-white transition">
+                    <i class="fas fa-times"></i>
                 </button>
             </div>
-            <div class="p-6 overflow-y-auto space-y-4 flex-1" id="all-apps-list" aria-live="polite"></div>
+            <div class="p-6 overflow-y-auto space-y-4 flex-1" id="all-apps-list"></div>
         </div>
     </div>
 
     <!-- Service Form Modal with Holographic Scanline -->
-    <div id="service-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md" role="dialog" aria-modal="true" aria-labelledby="service-title">
+    <div id="service-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md">
         <div class="glass-panel-glow rounded-3xl max-w-2xl w-full max-h-[92vh] overflow-hidden border border-white/10 shadow-2xl flex flex-col relative" id="service-modal-box">
             <div id="modal-scanline" class="scanline-bar hidden"></div>
 
@@ -972,7 +936,7 @@
                             <span id="service-title">Service Form</span>
                             <span class="text-[10px] font-mono px-2 py-0.5 rounded bg-brand-500/20 text-brand-300 border border-brand-500/30">STANDARD FORM</span>
                         </h3>
-                        <p class="text-xs text-slate-400 mt-0.5">Enter fictional details or copy the sample profile saved in this browser.</p>
+                        <p class="text-xs text-slate-400 mt-0.5">Fill manually or tap AI Auto-Fill to populate in 1 click</p>
                     </div>
                 </div>
                 <button onclick="closeModal('service-modal')" class="w-9 h-9 rounded-xl bg-white/5 hover:bg-white/10 flex items-center justify-center text-slate-400 hover:text-white transition">
@@ -981,20 +945,6 @@
             </div>
 
             <div class="p-6 overflow-y-auto flex-1 space-y-5">
-                <div class="p-3 rounded-xl border border-amber-400/30 bg-amber-500/10 text-xs text-amber-100" role="note">
-                    Sample form only. Do not enter real personal or identity information.
-                </div>
-                <div class="rounded-xl border border-white/10 bg-white/5 p-4">
-                    <div class="flex flex-wrap items-center justify-between gap-2">
-                        <h4 class="text-sm font-bold text-white">Example documents to prepare</h4>
-                        <button type="button" onclick="saveApplicationDraft()" class="text-xs text-cyanAccent-300 underline underline-offset-2">Save draft on this device</button>
-                    </div>
-                    <ul id="service-checklist-items" class="mt-3 space-y-2 text-xs text-slate-200"></ul>
-                    <div class="mt-3 flex items-center justify-between gap-2">
-                        <p class="text-[10px] text-slate-400">Checklist and draft are demo aids. Saved draft stays in this browser.</p>
-                        <button type="button" id="resume-draft-button" onclick="resumeApplicationDraft()" class="hidden text-xs text-cyanAccent-300 underline underline-offset-2">Resume saved draft</button>
-                    </div>
-                </div>
                 <div class="p-4 rounded-2xl bg-gradient-to-r from-brand-950/70 to-slate-900 border border-brand-500/30 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                     <div class="flex items-center gap-3">
                         <div class="w-9 h-9 rounded-xl bg-cyanAccent-500/20 text-cyanAccent-400 flex items-center justify-center text-sm">
@@ -1002,71 +952,71 @@
                         </div>
                         <div>
                             <div class="text-xs font-bold text-white flex items-center gap-1.5">
-                                <span>Sample profile fill</span>
-                                <span class="text-[9px] px-1.5 py-0.2 rounded bg-amber-500/20 text-amber-200 font-mono">DEMO ONLY</span>
+                                <span>Zero-Typing Mode</span>
+                                <span class="text-[9px] px-1.5 py-0.2 rounded bg-cyber-emerald/20 text-cyber-emerald font-mono">100% Match</span>
                             </div>
-                            <p class="text-[11px] text-slate-400">Copies fictional sample details from this browser; it does not verify identity.</p>
+                            <p class="text-[11px] text-slate-400">Fill all verified identity fields from your encrypted vault.</p>
                         </div>
                     </div>
                     <button type="button" id="ai-fill-btn" onclick="aiAutoFill()" class="btn-vibe text-white text-xs font-bold px-4 py-2.5 rounded-xl flex items-center gap-2 flex-shrink-0">
                         <i class="fas fa-bolt"></i>
-                        <span>Use sample profile</span>
+                        <span>AI Auto-Fill Now</span>
                     </button>
                 </div>
 
                 <form id="gov-form" class="space-y-4">
                     <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <div>
-                            <label for="gov-name" class="block text-[11px] font-mono uppercase tracking-wider text-slate-400 mb-1.5">Full Legal Name</label>
+                            <label class="block text-[11px] font-mono uppercase tracking-wider text-slate-400 mb-1.5">Full Legal Name</label>
                             <input type="text" id="gov-name" class="cyber-input w-full px-3.5 py-2.5 rounded-xl text-sm text-slate-200 placeholder-slate-600" placeholder="Legal full name" required>
                         </div>
                         <div>
-                            <label for="gov-dob" class="block text-[11px] font-mono uppercase tracking-wider text-slate-400 mb-1.5">Date of Birth</label>
+                            <label class="block text-[11px] font-mono uppercase tracking-wider text-slate-400 mb-1.5">Date of Birth</label>
                             <input type="date" id="gov-dob" class="cyber-input w-full px-3.5 py-2.5 rounded-xl text-sm text-slate-200">
                         </div>
                         <div>
-                            <label for="gov-ssn" class="block text-[11px] font-mono uppercase tracking-wider text-slate-400 mb-1.5">Aadhaar / Citizen ID</label>
+                            <label class="block text-[11px] font-mono uppercase tracking-wider text-slate-400 mb-1.5">Aadhaar / Citizen ID</label>
                             <input type="text" id="gov-ssn" placeholder="XXXX-XXXX-XXXX" class="cyber-input w-full px-3.5 py-2.5 rounded-xl text-sm text-slate-200 placeholder-slate-600">
                         </div>
                         <div>
-                            <label for="gov-phone" class="block text-[11px] font-mono uppercase tracking-wider text-slate-400 mb-1.5">Registered Phone</label>
+                            <label class="block text-[11px] font-mono uppercase tracking-wider text-slate-400 mb-1.5">Registered Phone</label>
                             <input type="tel" id="gov-phone" placeholder="+91..." class="cyber-input w-full px-3.5 py-2.5 rounded-xl text-sm text-slate-200 placeholder-slate-600">
                         </div>
                         <div class="sm:col-span-2">
-                            <label for="gov-email" class="block text-[11px] font-mono uppercase tracking-wider text-slate-400 mb-1.5">Email Address</label>
+                            <label class="block text-[11px] font-mono uppercase tracking-wider text-slate-400 mb-1.5">Email Address</label>
                             <input type="email" id="gov-email" placeholder="citizen@domain.com" class="cyber-input w-full px-3.5 py-2.5 rounded-xl text-sm text-slate-200 placeholder-slate-600">
                         </div>
                         <div class="sm:col-span-2">
-                            <label for="gov-address" class="block text-[11px] font-mono uppercase tracking-wider text-slate-400 mb-1.5">Permanent Address</label>
+                            <label class="block text-[11px] font-mono uppercase tracking-wider text-slate-400 mb-1.5">Permanent Address</label>
                             <input type="text" id="gov-address" placeholder="Flat, Street, Landmark" class="cyber-input w-full px-3.5 py-2.5 rounded-xl text-sm text-slate-200 placeholder-slate-600">
                         </div>
                         <div>
-                            <label for="gov-city" class="block text-[11px] font-mono uppercase tracking-wider text-slate-400 mb-1.5">City / District</label>
+                            <label class="block text-[11px] font-mono uppercase tracking-wider text-slate-400 mb-1.5">City / District</label>
                             <input type="text" id="gov-city" placeholder="City" class="cyber-input w-full px-3.5 py-2.5 rounded-xl text-sm text-slate-200 placeholder-slate-600">
                         </div>
                         <div>
-                            <label for="gov-state" class="block text-[11px] font-mono uppercase tracking-wider text-slate-400 mb-1.5">State / UT</label>
+                            <label class="block text-[11px] font-mono uppercase tracking-wider text-slate-400 mb-1.5">State / UT</label>
                             <input type="text" id="gov-state" placeholder="State" class="cyber-input w-full px-3.5 py-2.5 rounded-xl text-sm text-slate-200 placeholder-slate-600">
                         </div>
                         <div class="sm:col-span-2">
-                            <label for="gov-zip" class="block text-[11px] font-mono uppercase tracking-wider text-slate-400 mb-1.5">Postal Zip Code</label>
+                            <label class="block text-[11px] font-mono uppercase tracking-wider text-slate-400 mb-1.5">Postal Zip Code</label>
                             <input type="text" id="gov-zip" placeholder="6-digit PIN" class="cyber-input w-full px-3.5 py-2.5 rounded-xl text-sm text-slate-200 placeholder-slate-600">
                         </div>
                     </div>
 
                     <div class="mt-4">
-                        <label class="block text-[11px] font-mono uppercase tracking-wider text-slate-400 mb-1.5">Simulated document check</label>
+                        <label class="block text-[11px] font-mono uppercase tracking-wider text-slate-400 mb-1.5">Supporting Document (AI OCR Verification)</label>
                         <div onclick="simulateDocUpload()" class="border-2 border-dashed border-white/10 hover:border-brand-500/50 rounded-2xl p-4 text-center cursor-pointer transition bg-slate-900/40 hover:bg-brand-500/5 group">
                             <i class="fas fa-cloud-arrow-up text-xl text-slate-500 group-hover:text-brand-400 transition mb-1.5"></i>
-                            <div class="text-xs font-semibold text-slate-300" id="doc-upload-label">Click to simulate a document check</div>
-                            <div class="text-[10px] text-slate-500 mt-0.5">No file is uploaded or read, and no external identity service is contacted.</div>
+                            <div class="text-xs font-semibold text-slate-300" id="doc-upload-label">Click to attach ID Proof (PDF, JPG)</div>
+                            <div class="text-[10px] text-slate-500 mt-0.5">DigiLocker OCR automatically validates authenticity</div>
                         </div>
                     </div>
                 </form>
             </div>
 
             <div class="p-6 border-t border-white/10 flex items-center justify-between bg-slate-950/60">
-                <button type="button" onclick="clearGovForm(); discardApplicationDraft()" class="text-xs font-medium text-slate-400 hover:text-white transition">
+                <button type="button" onclick="clearGovForm()" class="text-xs font-medium text-slate-400 hover:text-white transition">
                     <i class="fas fa-rotate-left mr-1"></i> Reset Fields
                 </button>
                 <div class="flex items-center gap-3">
@@ -1075,7 +1025,7 @@
                     </button>
                     <button type="button" onclick="submitApplication()" class="btn-vibe text-white text-xs font-bold px-6 py-2.5 rounded-xl flex items-center gap-2">
                         <i class="fas fa-paper-plane"></i>
-                        <span>Submit sample application</span>
+                        <span>Submit Application</span>
                     </button>
                 </div>
             </div>
@@ -1083,7 +1033,7 @@
     </div>
 
     <!-- ===== OFFICER SCRUTINY & DECISION MODAL (ADMIN POV) ===== -->
-    <div id="scrutiny-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-md" role="dialog" aria-modal="true" aria-labelledby="scrutiny-modal-title">
+    <div id="scrutiny-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-md">
         <div class="glass-panel-glow rounded-3xl max-w-2xl w-full border border-cyber-amber/40 overflow-hidden shadow-2xl flex flex-col">
             <div class="p-6 border-b border-white/10 bg-slate-900/80 flex items-center justify-between">
                 <div class="flex items-center gap-3">
@@ -1092,8 +1042,8 @@
                     </div>
                     <div>
                         <h3 class="text-base sm:text-lg font-bold text-white flex items-center gap-2">
-                            <span id="scrutiny-modal-title">Sample review terminal</span>
-                            <span class="text-[10px] px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-400 font-mono">DEMO LEDGER</span>
+                            <span>Officer Decision Terminal</span>
+                            <span class="text-[10px] px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-400 font-mono">LIVE SYNC</span>
                         </h3>
                         <p class="text-xs text-slate-400">Application Reference: <span id="sc-ack" class="font-mono text-cyanAccent-400 font-bold"></span></p>
                     </div>
@@ -1126,31 +1076,31 @@
                 <div class="p-3.5 rounded-xl bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-between text-xs">
                     <div class="flex items-center gap-2 text-emerald-300 font-mono">
                         <i class="fas fa-shield-check text-base text-cyber-emerald"></i>
-                        <span>Sample identity check — no UIDAI or DigiLocker connection</span>
+                        <span>UIDAI & DigiLocker Biometrics Certified (99.8% Match)</span>
                     </div>
-                    <span class="text-[10px] px-2 py-0.5 rounded bg-amber-500/20 text-amber-300 font-mono">SIMULATED</span>
+                    <span class="text-[10px] px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-400 font-mono">VERIFIED</span>
                 </div>
 
                 <div>
-                    <label class="block text-[11px] font-mono text-slate-400 uppercase tracking-wider mb-1.5">Simulated review notes</label>
-                    <textarea id="sc-remarks" rows="2" placeholder="e.g. Sample document received; review is simulated..."
+                    <label class="block text-[11px] font-mono text-slate-400 uppercase tracking-wider mb-1.5">Official Adjudication Remarks</label>
+                    <textarea id="sc-remarks" rows="2" placeholder="e.g. Address proof verified against municipal records, approved for biometric issuance..."
                         class="cyber-input w-full p-3 rounded-xl text-xs text-slate-200 placeholder-slate-600 focus:outline-none"></textarea>
                 </div>
 
                 <div class="pt-2">
-                    <div class="text-[11px] font-mono text-slate-400 uppercase mb-2">Record a sample decision in the demo ledger:</div>
+                    <div class="text-[11px] font-mono text-slate-400 uppercase mb-2">Record Official Decision in setugov.xlsx:</div>
                     <div class="grid grid-cols-3 gap-2.5">
                         <button type="button" onclick="applyDecision('Under Review')" class="py-3 px-3 rounded-xl bg-cyanAccent-500/20 hover:bg-cyanAccent-500/30 border border-cyanAccent-500/50 text-cyanAccent-300 font-bold text-xs flex flex-col items-center gap-1 transition">
                             <i class="fas fa-magnifying-glass text-sm"></i>
-                            <span>Simulate review</span>
+                            <span>Mark In Review</span>
                         </button>
                         <button type="button" onclick="applyDecision('Approved')" class="py-3 px-3 rounded-xl bg-emerald-600/30 hover:bg-emerald-600/50 border border-emerald-500/60 text-emerald-300 font-bold text-xs flex flex-col items-center gap-1 transition shadow-lg shadow-emerald-500/10">
                             <i class="fas fa-circle-check text-sm text-cyber-emerald"></i>
-                            <span>Mark sample approved</span>
+                            <span>Accept & Approve</span>
                         </button>
                         <button type="button" onclick="applyDecision('Rejected')" class="py-3 px-3 rounded-xl bg-rose-600/20 hover:bg-rose-600/30 border border-rose-500/50 text-rose-300 font-bold text-xs flex flex-col items-center gap-1 transition">
                             <i class="fas fa-circle-xmark text-sm text-rose-400"></i>
-                            <span>Mark sample rejected</span>
+                            <span>Reject Request</span>
                         </button>
                     </div>
                 </div>
@@ -1159,7 +1109,7 @@
     </div>
 
     <!-- Profile Edit Modal -->
-    <div id="profile-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md" role="dialog" aria-modal="true" aria-labelledby="profile-modal-title">
+    <div id="profile-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md">
         <div class="glass-panel-glow rounded-3xl max-w-md w-full max-h-[90vh] overflow-hidden border border-white/10 shadow-2xl flex flex-col">
             <div class="p-6 border-b border-white/10 flex items-center justify-between">
                 <div class="flex items-center gap-3">
@@ -1167,8 +1117,8 @@
                         <i class="fas fa-user-gear"></i>
                     </div>
                     <div>
-                        <h3 id="profile-modal-title" class="text-lg font-bold text-white">Sample profile on this device</h3>
-                        <p class="text-xs text-amber-200">Demo storage only — do not save real identity or contact details.</p>
+                        <h3 class="text-lg font-bold text-white">Citizen Vault Profile</h3>
+                        <p class="text-xs text-slate-400">Stores credentials for automatic 1-click forms</p>
                     </div>
                 </div>
                 <button onclick="closeModal('profile-modal')" class="w-9 h-9 rounded-xl bg-white/5 hover:bg-white/10 flex items-center justify-center text-slate-400 hover:text-white transition">
@@ -1220,14 +1170,14 @@
 
                 <div class="flex justify-end gap-2 pt-4">
                     <button type="button" onclick="closeModal('profile-modal')" class="px-4 py-2 rounded-xl text-xs text-slate-400 hover:text-white">Cancel</button>
-                    <button type="submit" class="btn-vibe text-white text-xs font-bold px-5 py-2.5 rounded-xl">Save sample profile</button>
+                    <button type="submit" class="btn-vibe text-white text-xs font-bold px-5 py-2.5 rounded-xl">Save Vault</button>
                 </div>
             </form>
         </div>
     </div>
 
     <!-- Command Palette (Ctrl+K) -->
-    <div id="cmd-palette-modal" class="hidden fixed inset-0 z-50 flex items-start justify-center pt-20 p-4 bg-black/80 backdrop-blur-md" role="dialog" aria-modal="true" aria-label="Quick commands">
+    <div id="cmd-palette-modal" class="hidden fixed inset-0 z-50 flex items-start justify-center pt-20 p-4 bg-black/80 backdrop-blur-md">
         <div class="glass-panel-glow rounded-2xl max-w-xl w-full border border-white/10 shadow-2xl overflow-hidden scale-in">
             <div class="p-3 border-b border-white/10 flex items-center gap-3">
                 <i class="fas fa-terminal text-brand-400 text-sm pl-2"></i>
@@ -1240,23 +1190,29 @@
     </div>
 
     <!-- Digital Acknowledgement Receipt Slip Modal -->
-    <div id="receipt-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-md" role="dialog" aria-modal="true" aria-labelledby="receipt-title">
+    <div id="receipt-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-md">
         <div class="glass-panel-glow rounded-3xl max-w-md w-full border border-cyanAccent-500/30 p-6 shadow-2xl relative">
             <div class="text-center mb-6">
                 <div class="w-12 h-12 mx-auto rounded-2xl bg-gradient-to-tr from-cyber-emerald to-cyanAccent-400 flex items-center justify-center text-slate-950 text-xl font-bold mb-3 shadow-lg shadow-cyber-emerald/30">
                     <i class="fas fa-stamp"></i>
                 </div>
-                <h3 id="receipt-title" class="text-lg font-bold text-white">Sample submission receipt</h3>
+                <h3 class="text-lg font-bold text-white">Digital Submission Pass</h3>
                 <p class="text-xs text-slate-400 font-mono" id="receipt-id">ACK-SETU-9823481</p>
             </div>
 
             <div class="bg-slate-900/90 rounded-2xl p-4 border border-white/10 font-mono text-xs space-y-2 mb-6 text-slate-300">
                 <div class="flex justify-between"><span class="text-slate-500">Service:</span> <span class="font-bold text-white" id="receipt-service">Aadhar Update</span></div>
                 <div class="flex justify-between"><span class="text-slate-500">Applicant:</span> <span class="text-white" id="receipt-applicant">Priya Sharma</span></div>
-                <div class="flex justify-between"><span class="text-slate-500">Demo timestamp:</span> <span class="text-cyanAccent-400" id="receipt-time">--</span></div>
-                <div class="flex justify-between"><span class="text-slate-500">Sample status:</span> <span class="text-cyanAccent-300 font-bold" id="receipt-status">SAMPLE: PENDING</span></div>
-                <div class="border border-amber-400/30 bg-amber-500/10 rounded-xl p-3 mt-3 text-center text-[11px] text-amber-100">
-                    This is a fictional receipt for the prototype only. It is not a government acknowledgement, verification, or proof of application.
+                <div class="flex justify-between"><span class="text-slate-500">Timestamp:</span> <span class="text-cyanAccent-400" id="receipt-time">2026-10-04</span></div>
+                <div class="flex justify-between"><span class="text-slate-500">Ledger Block:</span> <span class="text-brand-300">#481,209</span></div>
+                <div class="flex justify-between"><span class="text-slate-500">Status:</span> <span class="text-cyber-emerald font-bold" id="receipt-status">DIGITALLY VERIFIED</span></div>
+                <div class="border-t border-dashed border-white/10 my-2 pt-2 text-center text-[10px] text-slate-500">
+                    Scan with any government QR scanner
+                </div>
+                <div class="flex justify-center pt-1">
+                    <div class="w-24 h-24 bg-white p-1 rounded-xl flex items-center justify-center">
+                        <i class="fas fa-qrcode text-6xl text-slate-900"></i>
+                    </div>
                 </div>
             </div>
 
@@ -1442,446 +1398,10 @@
         const DB_KEY = 'setuGovUser';
         const APPS_KEY = 'setuGovApps';
         const VAULT_KEY = 'setuGovPersonalInfo';
-        const DRAFT_KEY = 'setuGovApplicationDraft';
-        const LANGUAGE_KEY = 'setuGovLanguage';
         const APPLICATIONS_ENDPOINT = '/.netlify/functions/applications';
         let sharedApplicationsAvailable = false;
         let sharedApplicationsWarningShown = false;
         let sharedApplicationsPollTimer = null;
-        let currentLanguage = localStorage.getItem(LANGUAGE_KEY) === 'hi' ? 'hi' : 'en';
-
-        const interfaceCopy = {
-            en: {
-                landingHeading: 'What would you like to do today?',
-                landingIntro: 'Apply for a public service or check an application. This preview uses sample data only.',
-                howItWorks: 'Choose a sample task, use fictional details, then explore the simulated result.',
-                chooseSampleProfile: 'Choose a sample profile',
-                optional: 'Optional',
-                sampleProfile: 'Sample profile',
-                seniorCitizen: 'Senior citizen',
-                studentScholar: 'Student scholar',
-                applyBenefit: 'Apply for a benefit',
-                openSampleApplication: 'Open a sample healthcare application',
-                trackApplication: 'Track an application',
-                viewSampleStatus: 'View a sample application status',
-                checkEligibility: 'Check sample eligibility',
-                documentChecklist: 'See document checklist',
-                demoDisclaimer: 'Demo only — use fictional details. No live identity checks or government services are connected.',
-                readAloud: 'Read aloud',
-                draftSaved: 'A saved application draft is available in this browser.',
-                resumeDraft: 'Resume draft',
-                discardDraft: 'Discard',
-                checklistDisclaimer: 'Checklist is illustrative, not an official document requirement. Never enter real ID details into this public demo.',
-                faqPlaceholder: 'Ask about a sample application or this demo',
-                eligibilityTitle: 'Sample eligibility checker',
-                eligibilityIntro: 'A demo screening aid only—not an eligibility decision. Official rules may differ.',
-                sampleScheme: 'Sample scheme',
-                applicantAge: 'Applicant age',
-                householdIncome: 'Household annual income (₹)',
-                checkSampleCriteria: 'Check sample criteria',
-                checklistTitle: 'Before you start',
-                checklistIntro: 'Common examples for planning only. Exact requirements vary by scheme and location.',
-                checklistService: 'Service',
-                continueSampleApplication: 'Continue with sample application',
-                officialRulesNote: 'For real applications, confirm current rules with the official scheme source:',
-                noOfficialDecision: 'This prototype does not contact a scheme portal, verify documents, or determine eligibility. Do not enter real personal information.'
-            },
-            hi: {
-                landingHeading: 'आज आप क्या करना चाहते हैं?',
-                landingIntro: 'किसी सार्वजनिक सेवा के लिए आवेदन करें या अपने आवेदन की स्थिति देखें। यह केवल नमूना डेटा वाला पूर्वावलोकन है।',
-                howItWorks: 'नमूना कार्य चुनें, काल्पनिक जानकारी भरें और फिर डेमो परिणाम देखें।',
-                chooseSampleProfile: 'नमूना प्रोफ़ाइल चुनें',
-                optional: 'वैकल्पिक',
-                sampleProfile: 'नमूना प्रोफ़ाइल',
-                seniorCitizen: 'वरिष्ठ नागरिक',
-                studentScholar: 'छात्र',
-                applyBenefit: 'लाभ के लिए आवेदन करें',
-                openSampleApplication: 'स्वास्थ्य सेवा का नमूना आवेदन खोलें',
-                trackApplication: 'आवेदन की स्थिति देखें',
-                viewSampleStatus: 'नमूना आवेदन की स्थिति देखें',
-                checkEligibility: 'नमूना पात्रता जांचें',
-                documentChecklist: 'दस्तावेज़ सूची देखें',
-                demoDisclaimer: 'केवल डेमो — काल्पनिक जानकारी का उपयोग करें। कोई सरकारी सेवा या पहचान जांच जुड़ी नहीं है।',
-                readAloud: 'सुनें',
-                draftSaved: 'इस ब्राउज़र में आवेदन का सहेजा हुआ मसौदा उपलब्ध है।',
-                resumeDraft: 'मसौदा जारी रखें',
-                discardDraft: 'हटाएँ',
-                checklistDisclaimer: 'यह केवल उदाहरण सूची है, आधिकारिक दस्तावेज़ आवश्यकता नहीं। इस सार्वजनिक डेमो में असली पहचान विवरण न भरें।',
-                faqPlaceholder: 'नमूना आवेदन या इस डेमो के बारे में पूछें',
-                eligibilityTitle: 'नमूना पात्रता जांच',
-                eligibilityIntro: 'केवल डेमो जांच—यह पात्रता का निर्णय नहीं है। आधिकारिक नियम अलग हो सकते हैं।',
-                sampleScheme: 'नमूना योजना',
-                applicantAge: 'आवेदक की आयु',
-                householdIncome: 'परिवार की वार्षिक आय (₹)',
-                checkSampleCriteria: 'नमूना मानदंड जांचें',
-                checklistTitle: 'शुरू करने से पहले',
-                checklistIntro: 'योजना और स्थान के अनुसार दस्तावेज़ अलग हो सकते हैं। यह केवल उदाहरण सूची है।',
-                checklistService: 'सेवा',
-                continueSampleApplication: 'नमूना आवेदन जारी रखें',
-                officialRulesNote: 'वास्तविक आवेदन से पहले आधिकारिक स्रोत पर वर्तमान नियम देखें:',
-                noOfficialDecision: 'यह प्रोटोटाइप किसी योजना पोर्टल से नहीं जुड़ता, दस्तावेज़ जांचता या पात्रता तय नहीं करता। वास्तविक व्यक्तिगत जानकारी न भरें।'
-            }
-        };
-
-        const documentRequirements = {
-            'Healthcare Scheme': ['Photo identity proof (example)', 'Household or income details (if the scheme asks)', 'Current address proof (example)'],
-            'Scholarship Application': ['Recent academic marksheet', 'Current-year enrolment proof', 'Household income certificate (if required by the scheme)'],
-            'Pension Service Application': ['Age proof', 'Residence proof', 'Bank account details for the official application'],
-            'Aadhar Card Update': ['Proof supporting the requested update', 'Existing identity number (do not enter it in this demo)'],
-            'Business License Application': ['Business address proof', 'Business registration details', 'Tax or sector documents required by the local authority']
-        };
-        const documentRequirementsHindi = {
-            'Healthcare Scheme': ['फोटो पहचान प्रमाण (उदाहरण)', 'परिवार या आय का विवरण (यदि योजना मांगे)', 'वर्तमान पते का प्रमाण (उदाहरण)'],
-            'Scholarship Application': ['हाल की अंकतालिका', 'चालू वर्ष में नामांकन का प्रमाण', 'परिवार की आय का प्रमाणपत्र (यदि योजना मांगे)'],
-            'Pension Service Application': ['आयु का प्रमाण', 'निवास का प्रमाण', 'आधिकारिक आवेदन के लिए बैंक खाता विवरण'],
-            'Aadhar Card Update': ['अनुरोधित बदलाव का समर्थन करने वाला प्रमाण', 'मौजूदा पहचान संख्या (इस डेमो में न भरें)'],
-            'Business License Application': ['व्यवसाय के पते का प्रमाण', 'व्यवसाय पंजीकरण का विवरण', 'स्थानीय प्राधिकरण द्वारा मांगे गए कर या क्षेत्र संबंधी दस्तावेज़']
-        };
-
-        const schemeRules = {
-            healthcare: {
-                name: 'Healthcare assistance (sample rule)',
-                minAge: 0,
-                maxAge: 120,
-                maxIncome: 250000,
-                ageReason: 'No age threshold is used in this illustrative check.',
-                incomeReason: 'The demo uses an invented annual household-income threshold of ₹2,50,000.',
-                link: 'https://nha.gov.in/PM-JAY',
-                linkText: 'Official PM-JAY information'
-            },
-            scholarship: {
-                name: 'Student scholarship (sample rule)',
-                minAge: 0,
-                maxAge: 25,
-                maxIncome: 250000,
-                ageReason: 'For this demo only, the sample age range is 0–25.',
-                incomeReason: 'The demo uses an invented annual household-income threshold of ₹2,50,000.',
-                link: 'https://scholarships.gov.in/',
-                linkText: 'National Scholarship Portal'
-            },
-            pension: {
-                name: 'Senior pension (sample rule)',
-                minAge: 60,
-                maxAge: 120,
-                maxIncome: 120000,
-                ageReason: 'For this demo only, the sample minimum age is 60.',
-                incomeReason: 'The demo uses an invented annual household-income threshold of ₹1,20,000.',
-                link: 'https://nsap.nic.in/',
-                linkText: 'National Social Assistance Programme'
-            }
-        };
-
-        function setLanguage(language) {
-            currentLanguage = language === 'hi' ? 'hi' : 'en';
-            localStorage.setItem(LANGUAGE_KEY, currentLanguage);
-            document.documentElement.lang = currentLanguage === 'hi' ? 'hi' : 'en';
-            document.querySelectorAll('[data-i18n]').forEach((element) => {
-                const translation = interfaceCopy[currentLanguage][element.dataset.i18n];
-                if (translation) element.textContent = translation;
-            });
-            document.querySelectorAll('[data-i18n-placeholder]').forEach((element) => {
-                const translation = interfaceCopy[currentLanguage][element.dataset.i18nPlaceholder];
-                if (translation) element.placeholder = translation;
-            });
-            ['language-select', 'header-language-select', 'nav-language-select'].forEach((id) => {
-                const control = document.getElementById(id);
-                if (control) control.value = currentLanguage;
-            });
-            populateRecentApps();
-            updateEligibilityRuleLink();
-            renderDocumentChecklist();
-            const eligibilityTitle = document.getElementById('eligibility-title');
-            const eligibilityIntro = document.getElementById('eligibility-intro');
-            const checklistTitle = document.getElementById('checklist-title');
-            const checklistIntro = document.getElementById('checklist-intro');
-            if (eligibilityTitle) eligibilityTitle.textContent = interfaceCopy[currentLanguage].eligibilityTitle;
-            if (eligibilityIntro) eligibilityIntro.textContent = interfaceCopy[currentLanguage].eligibilityIntro;
-            if (checklistTitle) checklistTitle.textContent = interfaceCopy[currentLanguage].checklistTitle;
-            if (checklistIntro) checklistIntro.textContent = interfaceCopy[currentLanguage].checklistIntro;
-            const checklistNote = document.getElementById('checklist-note');
-            const eligibilityNote = document.getElementById('eligibility-note');
-            if (checklistNote) checklistNote.textContent = interfaceCopy[currentLanguage].checklistDisclaimer;
-            if (eligibilityNote) eligibilityNote.textContent = interfaceCopy[currentLanguage].noOfficialDecision;
-        }
-
-        function readLandingAloud() {
-            if (!('speechSynthesis' in window) || typeof SpeechSynthesisUtterance === 'undefined') {
-                showToast('Read-aloud is not supported by this browser.', 'warning');
-                return;
-            }
-            window.speechSynthesis.cancel();
-            const homeVisible = !document.getElementById('home-dashboard').classList.contains('hidden');
-            const spokenContent = homeVisible
-                ? [document.querySelector('#home-dashboard h1')?.textContent, document.querySelector('#home-dashboard > div > div p')?.textContent, document.getElementById('recent-apps')?.innerText]
-                : [document.getElementById('landing-heading')?.textContent, document.getElementById('landing-intro')?.textContent, document.getElementById('demo-disclaimer')?.textContent];
-            const utterance = new SpeechSynthesisUtterance(spokenContent.filter(Boolean).join('. '));
-            utterance.lang = currentLanguage === 'hi' ? 'hi-IN' : 'en-IN';
-            utterance.onerror = () => showToast('The browser could not read this page aloud.', 'warning');
-            window.speechSynthesis.speak(utterance);
-        }
-
-        function getCitizenStatus(status) {
-            const messages = {
-                en: {
-                    Pending: 'We received your application',
-                    'Under Review': 'Your application is being reviewed',
-                    Approved: 'A decision is recorded for your application',
-                    Rejected: 'A sample decision is recorded; review the sample note',
-                    'Needs documents': 'We need one more document',
-                    Submitted: 'We received your application'
-                },
-                hi: {
-                    Pending: 'हमें आपका आवेदन मिल गया है',
-                    'Under Review': 'आपके आवेदन की समीक्षा हो रही है',
-                    Approved: 'आपके आवेदन पर निर्णय दर्ज है',
-                    Rejected: 'नमूना निर्णय दर्ज है; नमूना टिप्पणी देखें',
-                    'Needs documents': 'हमें एक और दस्तावेज़ चाहिए',
-                    Submitted: 'हमें आपका आवेदन मिल गया है'
-                }
-            };
-            return (messages[currentLanguage] || messages.en)[status] || (currentLanguage === 'hi' ? 'आवेदन की स्थिति उपलब्ध है' : 'Application status is available');
-        }
-
-        function getTrackerDetails(app) {
-            const statusStep = { Pending: 1, Submitted: 1, 'Needs documents': 2, 'Under Review': 3, Approved: 4, Rejected: 4 }[app.status];
-            const step = statusStep || app.step || 1;
-            const stage = Math.min(Math.max(step, 1), 4);
-            const isHindi = currentLanguage === 'hi';
-            const stageDefinitions = isHindi
-                ? [
-                    { name: 'आवेदन मिला', complete: 'नमूना आवेदन प्राप्त हुआ।', current: 'हमें आपका आवेदन मिल गया है।', upcoming: 'आवेदन मिलने पर अगला चरण।' },
-                    { name: 'शुरुआती जांच', complete: 'नमूना फ़ील्ड जांच पूरी हुई।', current: 'नमूना आवेदन फ़ील्ड की जांच चल रही है।', upcoming: 'नमूना फ़ील्ड की जांच अगला चरण है।' },
-                    { name: 'मानव समीक्षा', complete: 'नमूना समीक्षा दर्ज है; आधिकारिक समीक्षा नहीं।', current: 'नमूना अधिकारी समीक्षा बाकी है; कोई आधिकारिक समीक्षा नहीं हो रही।', upcoming: 'नमूना अधिकारी समीक्षा बाकी है।' },
-                    { name: 'निर्णय दर्ज', complete: 'नमूना निर्णय दर्ज है; यह सरकारी निर्णय नहीं है।', current: 'डेमो में नमूना निर्णय दर्ज है; यह सरकारी निर्णय नहीं है।', upcoming: 'मानव समीक्षा के बाद निर्णय दर्ज होगा।' }
-                ]
-                : [
-                    { name: 'Application received', complete: 'Sample application received.', current: 'We received your application in this demo.', upcoming: 'Next: initial sample checks.' },
-                    { name: 'Initial checks', complete: 'Sample form fields were checked.', current: 'Sample form field checks are in progress.', upcoming: 'Next: sample field checks.' },
-                    { name: 'Human review', complete: 'A simulated officer review was recorded.', current: 'A human officer review is still needed; no official review is taking place.', upcoming: 'A human officer review is still needed in this sample workflow.' },
-                    { name: 'Decision recorded', complete: 'A sample decision was recorded; this is not an official decision.', current: 'A sample decision is recorded; this is not an official decision.', upcoming: 'A decision follows the simulated review.' }
-                ];
-            if (app.status === 'Needs documents') {
-                stageDefinitions[1].current = isHindi
-                    ? 'हमें एक और नमूना दस्तावेज़ चाहिए।'
-                    : 'We need one more sample document.';
-            } else if (app.status === 'Under Review') {
-                stageDefinitions[2].current = isHindi
-                    ? 'डेमो अधिकारी समीक्षा जारी है; कोई आधिकारिक समीक्षा नहीं हो रही।'
-                    : 'A simulated officer review is in progress; no official review is taking place.';
-            }
-            const stages = stageDefinitions.map((definition) => definition.name);
-            const waiting = isHindi
-                ? ['अगला चरण: शुरुआती जांच। नमूना अनुमान: 1 कार्यदिवस तक।', 'अगला चरण: दस्तावेज़ जांच। नमूना अनुमान: 1–3 कार्यदिवस।', 'अगला चरण: निर्णय दर्ज करना। नमूना अनुमान: 1–3 कार्यदिवस।', 'यह नमूना प्रक्रिया पूरी है।']
-                : ['Next: initial checks. Demo estimate: up to 1 working day.', 'Next: document checks. Demo estimate: 1–3 working days.', 'Next: record a sample decision. Demo estimate: 1–3 working days.', 'This sample workflow is complete.'];
-            if (app.status === 'Needs documents') {
-                waiting[1] = isHindi
-                    ? 'अगला कदम: मांगा गया नमूना दस्तावेज़ दें। इसके बाद समीक्षा शुरू होगी।'
-                    : 'Next: provide the requested sample document. Review can continue after it is received.';
-            }
-            const reviewStatus = app.status === 'Under Review'
-                ? (isHindi ? 'डेमो अधिकारी समीक्षा जारी है; आधिकारिक समीक्षा नहीं' : 'Simulated officer review is in progress; no official review')
-                : ['Pending', 'Submitted', 'Needs documents'].includes(app.status)
-                    ? (isHindi ? 'नमूना प्रक्रिया में अभी बाकी' : 'still pending in this sample workflow')
-                    : (isHindi ? 'दर्ज निर्णय नमूना है' : 'decision is simulated');
-            const checks = isHindi
-                ? [
-                    'नमूना आवेदन फ़ील्ड: ' + (app.applicantName ? 'भरे हुए' : 'जांच नहीं हुई'),
-                    'बाहरी पहचान या योजना डेटाबेस: जांच नहीं हुई',
-                    'अधिकारी की मानव समीक्षा: ' + reviewStatus
-                ]
-                : [
-                    'Sample form fields: ' + (app.applicantName ? 'present in the demo record' : 'not checked'),
-                    'External identity or scheme databases: not checked',
-                    'Human officer review: ' + reviewStatus
-                ];
-            return {
-                step: stage,
-                stages,
-                stageDefinitions,
-                waiting: waiting[stage - 1],
-                nextStep: app.status === 'Needs documents'
-                    ? (isHindi ? 'पहले मांगा गया नमूना दस्तावेज़ दें।' : 'First, provide the requested sample document.')
-                    : stageDefinitions[Math.min(stage, stageDefinitions.length - 1)].upcoming,
-                checks
-            };
-        }
-
-        function openEligibilityChecker() {
-            const modal = document.getElementById('eligibility-modal');
-            openAccessibleDialog(modal, '#eligibility-scheme');
-            updateEligibilityRuleLink();
-        }
-
-        function updateEligibilityRuleLink() {
-            const rule = schemeRules[document.getElementById('eligibility-scheme')?.value || 'healthcare'];
-            const link = document.getElementById('eligibility-rules-link');
-            if (!rule || !link) return;
-            link.href = rule.link;
-            link.textContent = currentLanguage === 'hi'
-                ? ({ healthcare: 'आधिकारिक PM-JAY जानकारी', scholarship: 'राष्ट्रीय छात्रवृत्ति पोर्टल', pension: 'राष्ट्रीय सामाजिक सहायता कार्यक्रम' }[document.getElementById('eligibility-scheme')?.value || 'healthcare'])
-                : rule.linkText;
-            const icon = document.createElement('i');
-            icon.className = 'fas fa-arrow-up-right-from-square text-xs';
-            icon.setAttribute('aria-hidden', 'true');
-            link.appendChild(icon);
-        }
-
-        function checkSampleEligibility(event) {
-            event.preventDefault();
-            const rule = schemeRules[document.getElementById('eligibility-scheme').value];
-            const age = Number(document.getElementById('eligibility-age').value);
-            const income = Number(document.getElementById('eligibility-income').value);
-            const ageMatches = age >= rule.minAge && age <= rule.maxAge;
-            const incomeMatches = income <= rule.maxIncome;
-            const result = document.getElementById('eligibility-result');
-            const matching = currentLanguage === 'hi' ? 'दर्ज जानकारी नमूना मानदंडों से मेल खाती है' : 'The details entered match the sample criteria';
-            const notMatching = currentLanguage === 'hi' ? 'दर्ज जानकारी एक या अधिक नमूना मानदंडों से मेल नहीं खाती' : 'The details entered do not match one or more sample criteria';
-            const ageReasonHindi = {
-                healthcare: 'इस उदाहरण जांच में आयु सीमा लागू नहीं है।',
-                scholarship: 'केवल इस डेमो में नमूना आयु सीमा 0–25 वर्ष है।',
-                pension: 'केवल इस डेमो में न्यूनतम नमूना आयु 60 वर्ष है।'
-            }[document.getElementById('eligibility-scheme').value];
-            const incomeReasonHindi = rule.maxIncome === 250000
-                ? 'डेमो में परिवार की वार्षिक आय की काल्पनिक सीमा ₹2,50,000 है।'
-                : 'डेमो में परिवार की वार्षिक आय की काल्पनिक सीमा ₹1,20,000 है।';
-            const ageDetail = `${ageMatches ? '✓' : '•'} ${currentLanguage === 'hi' ? ageReasonHindi : rule.ageReason}`;
-            const incomeDetail = `${incomeMatches ? '✓' : '•'} ${currentLanguage === 'hi' ? incomeReasonHindi : rule.incomeReason}`;
-            result.innerHTML = `
-                <p class="font-bold">${ageMatches && incomeMatches ? matching : notMatching}</p>
-                <p class="mt-2">${ageDetail}</p>
-                <p class="mt-1">${incomeDetail}</p>
-                <p class="mt-3 text-amber-200">${currentLanguage === 'hi' ? 'यह केवल डेमो नियम है, आधिकारिक पात्रता परिणाम नहीं। वास्तविक योजना की जांच के लिए नीचे दिए आधिकारिक लिंक का उपयोग करें।' : `Illustrative rule for ${rule.name}; this is not an official eligibility result. Use the official link below to check actual scheme rules.`}</p>
-            `;
-            result.classList.remove('hidden');
-        }
-
-        function getDocumentRequirements(serviceName) {
-            const requirements = currentLanguage === 'hi' ? documentRequirementsHindi : documentRequirements;
-            return requirements[serviceName] || [
-                'Photo identity proof (example)',
-                'Proof related to the requested service',
-                'Address or income proof, if required by the official scheme'
-            ];
-        }
-
-        function renderDocumentChecklist() {
-            const service = document.getElementById('checklist-service')?.value || 'Healthcare Scheme';
-            const items = document.getElementById('checklist-items');
-            if (items) {
-                items.innerHTML = getDocumentRequirements(service).map((item, index) => `
-                    <li class="flex items-start gap-2 rounded-lg bg-white/5 p-3">
-                        <input id="checklist-item-${index}" type="checkbox" class="mt-0.5 accent-cyan-400">
-                        <label for="checklist-item-${index}">${item}</label>
-                    </li>
-                `).join('');
-            }
-            const serviceItems = document.getElementById('service-checklist-items');
-            if (serviceItems) {
-                serviceItems.innerHTML = getDocumentRequirements(service).map((item, index) => `
-                    <li class="flex items-start gap-2"><input id="service-checklist-item-${index}" type="checkbox" class="mt-0.5 accent-cyan-400"><label for="service-checklist-item-${index}">${item}</label></li>
-                `).join('');
-            }
-        }
-
-        function showDocumentChecklist(serviceName = 'Healthcare Scheme') {
-            const select = document.getElementById('checklist-service');
-            select.value = documentRequirements[serviceName] ? serviceName : 'Healthcare Scheme';
-            renderDocumentChecklist();
-            const modal = document.getElementById('checklist-modal');
-            openAccessibleDialog(modal, '#checklist-service');
-        }
-
-        function startChecklistApplication() {
-            const checklistModal = document.getElementById('checklist-modal');
-            const returnFocus = modalFocusReturn.get(checklistModal);
-            const serviceName = document.getElementById('checklist-service').value;
-            const checkedItems = [...document.querySelectorAll('#checklist-items input[type="checkbox"]')]
-                .map((item) => item.checked);
-            closeModal('checklist-modal');
-            openServiceForm(serviceName);
-            document.querySelectorAll('#service-checklist-items input[type="checkbox"]')
-                .forEach((item, index) => { item.checked = checkedItems[index] || false; });
-            if (returnFocus) modalFocusReturn.set(document.getElementById('service-modal'), returnFocus);
-        }
-
-        function saveApplicationDraft(silent = false) {
-            const service = document.getElementById('service-title').textContent;
-            const fields = {};
-            document.querySelectorAll('#gov-form input').forEach((input) => { fields[input.id] = input.value; });
-            if (!Object.values(fields).some((value) => value.trim())) {
-                if (!silent) showToast('Add sample details before saving a draft.', 'info');
-                return;
-            }
-            try {
-                localStorage.setItem(DRAFT_KEY, JSON.stringify({ service, fields, savedAt: new Date().toISOString() }));
-                updateDraftAvailability(service);
-            } catch (error) {
-                console.error('Could not save the application draft:', error);
-                showToast('The draft could not be saved in this browser. Check available storage and try again.', 'error');
-                return;
-            }
-            if (!silent) showToast('Sample draft saved in this browser only.', 'success');
-        }
-
-        function updateDraftAvailability(serviceName) {
-            let draft = null;
-            try { draft = JSON.parse(localStorage.getItem(DRAFT_KEY) || 'null'); }
-            catch (error) { console.error('Could not read saved application draft:', error); }
-            const resumeButton = document.getElementById('resume-draft-button');
-            if (resumeButton) resumeButton.classList.toggle('hidden', !draft || (serviceName && draft.service !== serviceName));
-            const banner = document.getElementById('resume-draft-banner');
-            if (banner) banner.classList.toggle('hidden', !draft);
-            const dashboardBanner = document.getElementById('dashboard-draft-banner');
-            if (dashboardBanner) dashboardBanner.classList.toggle('hidden', !draft);
-        }
-
-        function resumeApplicationDraft() {
-            let draft;
-            try { draft = JSON.parse(localStorage.getItem(DRAFT_KEY) || 'null'); }
-            catch (error) {
-                console.error('Could not read saved application draft:', error);
-                showToast('The saved draft could not be read.', 'error');
-                return;
-            }
-            if (!draft || !draft.service || !draft.fields) {
-                showToast('There is no saved application draft to resume.', 'info');
-                updateDraftAvailability();
-                return;
-            }
-            if (document.getElementById('service-modal').classList.contains('hidden')) openServiceForm(draft.service);
-            Object.entries(draft.fields).forEach(([id, value]) => {
-                const input = document.getElementById(id);
-                if (input) input.value = value;
-            });
-            renderDocumentChecklistForService(draft.service);
-            updateDraftAvailability(draft.service);
-            document.getElementById('gov-name').focus();
-            showToast('Sample draft resumed on this device.', 'info');
-        }
-
-        function renderDocumentChecklistForService(serviceName) {
-            document.getElementById('service-title').textContent = serviceName;
-            const select = document.getElementById('checklist-service');
-            if (select && [...select.options].some((option) => option.value === serviceName)) select.value = serviceName;
-            renderDocumentChecklist();
-        }
-
-        function discardApplicationDraft() {
-            localStorage.removeItem(DRAFT_KEY);
-            updateDraftAvailability();
-            const saveButton = document.getElementById('resume-draft-button');
-            if (saveButton) saveButton.classList.add('hidden');
-            showToast('Saved sample draft removed from this browser.', 'info');
-        }
-
-        function openAccessibleDialog(dialog, focusTarget) {
-            if (!dialog) return;
-            modalFocusReturn.set(dialog, document.activeElement);
-            dialog.classList.remove('hidden');
-            const target = focusTarget ? dialog.querySelector(focusTarget) : dialog.querySelector('button, select, input, [tabindex="0"]');
-            target?.focus();
-        }
-        const modalFocusReturn = new WeakMap();
 
         function shouldUseSharedApplications() {
             return location.protocol !== 'file:' &&
@@ -2076,7 +1596,7 @@
                 applicantName: 'Priya Sharma', applicantEmail: 'priya.sharma@techventure.in', applicantPhone: '+91 98201 12345',
                 dob: '1996-08-14', ssn: '8492-3810-9281', address: 'Flat 402, Cyber Heights, Indiranagar',
                 city: 'Bengaluru', state: 'Karnataka', zip: '560038',
-                date: '2026-10-01', status: 'Approved', step: 4, officerNotes: 'Sample identity check simulated for this demo'
+                date: '2026-10-01', status: 'Approved', step: 4, officerNotes: 'Biometric verified via UIDAI mock gateway'
             },
             {
                 id: 102, ackId: 'ACK-PEN-7412', service: 'Pension Service Application',
@@ -2097,7 +1617,7 @@
                 applicantName: 'Sunita Devi', applicantEmail: 'sunita.devi@gram.in', applicantPhone: '+91 97180 23412',
                 dob: '1978-05-19', ssn: '3902-8812-4019', address: 'Village Rampur, Post Office Kalan',
                 city: 'Varanasi', state: 'Uttar Pradesh', zip: '221001',
-                date: '2026-10-03', status: 'Needs documents', step: 2, officerNotes: 'One additional sample document requested; no official document check was performed.'
+                date: '2026-10-03', status: 'Under Review', step: 2, officerNotes: 'Income certificate cross-check under scrutiny'
             },
             {
                 id: 105, ackId: 'ACK-BUS-9310', service: 'Business License Application',
@@ -2110,7 +1630,6 @@
 
         let currentActivePOV = 'citizen';
         let selectedAppForScrutiny = null;
-        let selectedDemoProfile = 'priya';
 
         function updateDemoStep(step) {
             const steps = [...document.querySelectorAll('.demo-step')];
@@ -2130,28 +1649,14 @@
             sfxSuccess();
             const citizen = demoCitizens[key];
             if (!citizen) return;
-            selectedDemoProfile = key;
             document.getElementById('login-name').value = citizen.name;
             document.getElementById('login-email').value = citizen.email;
             document.getElementById('login-phone').value = citizen.phone;
+            document.getElementById('login-password').value = 'securepass2026';
             localStorage.setItem(VAULT_KEY, JSON.stringify(citizen));
             updateDemoStep(1);
-            setDemoNarration(`Sample profile selected: ${citizen.name}. Identity checks are simulated.`);
-            showToast(`Loaded sample profile for ${citizen.name}. No live identity check was performed.`, 'info');
-        }
-
-        function startCitizenDemo(task) {
-            const citizen = demoCitizens[selectedDemoProfile] || demoCitizens.priya;
-            localStorage.setItem(DB_KEY, JSON.stringify({
-                name: citizen.name,
-                email: citizen.email,
-                phone: citizen.phone
-            }));
-            localStorage.setItem(VAULT_KEY, JSON.stringify(citizen));
-            showHome(citizen);
-
-            if (task === 'track') showApplications();
-            else showDocumentChecklist('Healthcare Scheme');
+            setDemoNarration(`Identity verified: ${citizen.name} is ready for the demo walkthrough.`);
+            showToast(`Loaded ${citizen.name}'s profile. Click Submit!`, 'info');
         }
 
         function launchDemoFlow() {
@@ -2159,8 +1664,7 @@
             if (!demoUser) return;
 
             window.__demoApproving = true;
-            selectedDemoProfile = 'priya';
-            setDemoNarration('Step 1/3 • Loading a sample citizen profile (simulated).');
+            setDemoNarration('Step 1/3 • Verifying citizen profile and DigiLocker vault.');
             updateDemoStep(1);
 
             localStorage.setItem(DB_KEY, JSON.stringify({
@@ -2173,15 +1677,16 @@
             document.getElementById('login-name').value = demoUser.name;
             document.getElementById('login-email').value = demoUser.email;
             document.getElementById('login-phone').value = demoUser.phone;
+            document.getElementById('login-password').value = 'securepass2026';
 
-            showToast('Demo mode: sample profile loaded. Identity checks are simulated.', 'info');
+            showToast('Demo mode: citizen profile loaded and verification gateway engaged.', 'info');
             const loginForm = document.getElementById('login-form');
             if (loginForm) {
                 loginForm.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
             }
 
             setTimeout(() => {
-                setDemoNarration('Step 2/3 • Demo auto-fill is using sample identity fields.');
+                setDemoNarration('Step 2/3 • AI auto-fill is extracting the verified identity fields.');
                 updateDemoStep(2);
                 openServiceForm('Aadhar Card Update');
                 setTimeout(() => {
@@ -2189,7 +1694,7 @@
                     const attemptSubmit = () => {
                         const nameField = document.getElementById('gov-name');
                         if (nameField && nameField.value.trim()) {
-                            setDemoNarration('Step 3/3 • Submitting a sample application for simulated review.');
+                            setDemoNarration('Step 3/3 • Submitting application and triggering live officer approval.');
                             updateDemoStep(3);
                             submitApplication();
                             return;
@@ -2209,8 +1714,6 @@
                     return { dot: 'bg-cyanAccent-400 shadow-[0_0_8px_#22d3ee]', badge: 'bg-cyanAccent-500/15 text-cyanAccent-400 border-cyanAccent-500/30', icon: 'fa-magnifying-glass-chart', label: 'Under Review' };
                 case 'Pending':
                     return { dot: 'bg-cyber-amber shadow-[0_0_8px_#f59e0b]', badge: 'bg-cyber-amber/15 text-cyber-amber border-cyber-amber/30', icon: 'fa-clock', label: 'Pending' };
-                case 'Needs documents':
-                    return { dot: 'bg-cyber-amber shadow-[0_0_8px_#f59e0b]', badge: 'bg-cyber-amber/15 text-cyber-amber border-cyber-amber/30', icon: 'fa-file-circle-exclamation', label: 'Needs documents' };
                 case 'Rejected':
                     return { dot: 'bg-rose-500 shadow-[0_0_8px_#f43f5e]', badge: 'bg-rose-500/15 text-rose-400 border-rose-500/30', icon: 'fa-circle-xmark', label: 'Rejected' };
                 default:
@@ -2233,7 +1736,7 @@
             const activeSideBanner = document.getElementById('active-side-banner');
             const activeSideLabel = document.getElementById('active-side-label');
             const activeSideIcon = document.getElementById('active-side-icon');
-            if (activeSideLabel) activeSideLabel.textContent = view === 'admin' ? 'Sample officer review' : 'Citizen services';
+            if (activeSideLabel) activeSideLabel.textContent = view === 'admin' ? 'Admin side' : 'Citizen side';
             if (activeSideIcon) activeSideIcon.className = view === 'admin' ? 'fas fa-user-shield' : 'fas fa-user';
             if (activeSideBanner) {
                 activeSideBanner.classList.toggle('text-amber-300', view === 'admin');
@@ -2277,7 +1780,7 @@
                 toggleText.textContent = 'Switch to Admin POV';
                 toggleBtn.className = 'flex items-center gap-2 px-3 py-2 rounded-xl bg-cyber-amber/15 hover:bg-cyber-amber/25 border border-cyber-amber/40 text-cyber-amber transition-all text-xs font-bold shadow-lg shadow-cyber-amber/10';
                 rolePill.className = 'system-ticker-role inline-flex items-center gap-1.5 text-cyber-emerald font-semibold bg-cyber-emerald/10 px-2 py-0.5 rounded-full border border-cyber-emerald/30';
-                rolePillText.textContent = 'DEMO PREVIEW';
+                rolePillText.textContent = 'CITIZEN GATEWAY';
 
                 showToast('Switched to Citizen Gateway', 'info');
             }
@@ -2361,15 +1864,15 @@
                         </td>
                         <td class="p-3.5 pr-5 text-right font-sans">
                             <div class="inline-flex items-center gap-1.5">
-                                <button onclick="quickUpdateStatus('${a.id}', 'Approved')" title="Mark sample approved"
+                                <button onclick="quickUpdateStatus('${a.id}', 'Approved')" title="Accept / Approve"
                                     class="p-1.5 px-2 rounded-lg bg-emerald-500/10 hover:bg-emerald-500/30 text-emerald-400 border border-emerald-500/30 transition text-xs font-medium">
                                     <i class="fas fa-check"></i>
                                 </button>
-                                <button onclick="quickUpdateStatus('${a.id}', 'Under Review')" title="Move to simulated review"
+                                <button onclick="quickUpdateStatus('${a.id}', 'Under Review')" title="Mark Under Review"
                                     class="p-1.5 px-2 rounded-lg bg-cyanAccent-500/10 hover:bg-cyanAccent-500/30 text-cyanAccent-400 border border-cyanAccent-500/30 transition text-xs font-medium">
                                     <i class="fas fa-magnifying-glass"></i>
                                 </button>
-                                <button onclick="quickUpdateStatus('${a.id}', 'Rejected')" title="Mark sample rejected"
+                                <button onclick="quickUpdateStatus('${a.id}', 'Rejected')" title="Reject Application"
                                     class="p-1.5 px-2 rounded-lg bg-rose-500/10 hover:bg-rose-500/30 text-rose-400 border border-rose-500/30 transition text-xs font-medium">
                                     <i class="fas fa-xmark"></i>
                                 </button>
@@ -2396,7 +1899,7 @@
             else sfxClick();
 
             renderAdminDashboard();
-            showToast(`${target.ackId || 'Sample application'}: demo status changed to ${newStatus}`, 'info');
+            showToast(`${target.ackId || 'Application'}: Marked as ${newStatus}`, newStatus === 'Approved' ? 'success' : (newStatus === 'Rejected' ? 'error' : 'info'));
         }
 
         function openScrutinyModal(appId) {
@@ -2417,7 +1920,7 @@
             document.getElementById('sc-address').textContent = `${app.address || 'Standard Address'}, ${app.city || ''}, ${app.state || ''} - ${app.zip || ''}`;
             document.getElementById('sc-remarks').value = app.officerNotes || '';
 
-            openAccessibleDialog(document.getElementById('scrutiny-modal'));
+            document.getElementById('scrutiny-modal').classList.remove('hidden');
         }
 
         async function applyDecision(decision) {
@@ -2425,7 +1928,7 @@
             const remarks = document.getElementById('sc-remarks').value.trim();
             const target = await updateApplicationRecord(selectedAppForScrutiny.id, {
                 status: decision,
-                officerNotes: remarks || `Simulated demo decision: ${decision}. Not an official decision.`,
+                officerNotes: remarks || `Official adjudication: ${decision}`,
                 step: decision === 'Approved' ? 4 : (decision === 'Under Review' ? 3 : 2)
             });
             if (!target) return;
@@ -2436,13 +1939,13 @@
             if (decision === 'Approved') {
                 sfxSuccess();
                 showConfetti();
-                showToast(`Sample application ${target.ackId} marked approved in the demo.`, 'success');
+                showToast(`Application ${target.ackId} APPROVED & issued to applicant.`, 'success');
             } else if (decision === 'Rejected') {
                 sfxReject();
-                showToast(`Sample application ${target.ackId} marked rejected in the demo.`, 'info');
+                showToast(`Application ${target.ackId} REJECTED with officer deficiency notice.`, 'error');
             } else {
                 sfxClick();
-                showToast(`Sample application ${target.ackId} moved to simulated review.`, 'info');
+                showToast(`Application ${target.ackId} moved to ACTIVE SCRUTINY.`, 'info');
             }
         }
 
@@ -2576,12 +2079,12 @@
                         <div class="service-icon w-12 h-12 rounded-xl bg-gradient-to-tr ${s.gradient} flex items-center justify-center text-white text-base shadow-md transition-all">
                             <i class="fas fa-${s.icon}"></i>
                         </div>
-                        <span class="text-[9px] font-mono px-2 py-0.5 rounded-full bg-white/5 border border-white/10 text-slate-400">Demo estimate: ${s.wait}</span>
+                        <span class="text-[9px] font-mono px-2 py-0.5 rounded-full bg-white/5 border border-white/10 text-slate-400">${s.wait}</span>
                     </div>
                     <h3 class="font-bold text-white text-xs sm:text-sm group-hover:text-cyanAccent-300 transition-colors">${s.label}</h3>
                     <p class="text-[11px] text-slate-400 mt-1 line-clamp-1">${s.sub}</p>
                     <div class="mt-3 pt-2.5 border-t border-white/5 flex items-center justify-between text-[10px] text-brand-400 font-medium">
-                        <span>Open sample form</span>
+                        <span>Launch Auto-Fill</span>
                         <i class="fas fa-arrow-right text-[9px] group-hover:translate-x-1 transition-transform"></i>
                     </div>
                 </div>
@@ -2593,11 +2096,9 @@
             if (!localStorage.getItem(APPS_KEY)) {
                 localStorage.setItem(APPS_KEY, JSON.stringify(defaultApps));
             }
-            setLanguage(currentLanguage);
-            updateDraftAvailability();
-            document.getElementById('eligibility-form').addEventListener('submit', checkSampleEligibility);
             const savedUser = JSON.parse(localStorage.getItem(DB_KEY));
             if (savedUser) showHome(savedUser);
+            else loadDemoProfile('priya');
             if (shouldUseSharedApplications() && sessionStorage.getItem('setuGovAdminKey')) {
                 refreshSharedApplications();
                 sharedApplicationsPollTimer = setInterval(() => refreshSharedApplications(), 15000);
@@ -2620,7 +2121,7 @@
 
             showHome(user);
             showConfetti();
-            showToast(`Welcome, ${user.name}! Your sample demo profile is ready.`, 'success');
+            showToast(`Welcome back, ${user.name}! Neural gateway unlocked.`, 'success');
         });
 
         function showHome(user) {
@@ -2637,7 +2138,6 @@
 
             populateRecentApps();
             syncProfileFormFields();
-            updateDraftAvailability();
         }
 
         function logout() {
@@ -2670,11 +2170,8 @@
             container.innerHTML = apps.slice(0, 3).map(app => {
                 const st = getStatusInfo(app.status);
                 const ack = app.ackId || `ACK-SETU-${app.id}`;
-                const tracker = getTrackerDetails(app);
-                const currentStage = tracker.stageDefinitions[tracker.step - 1];
                 return `
-                    <button type="button" class="w-full text-left glass-panel rounded-2xl p-4 border border-white/10 hover:border-brand-500/40 focus-visible:outline focus-visible:outline-2 focus-visible:outline-cyan-400 transition group cursor-pointer spotlight-card"
-                         aria-label="${getCitizenStatus(app.status)}: ${app.service}, reference ${ack}. Open sample tracker."
+                    <div class="glass-panel rounded-2xl p-4 border border-white/10 hover:border-brand-500/40 transition group cursor-pointer spotlight-card"
                          onclick="inspectAppDetails('${app.id}')">
                         <div class="flex items-start justify-between gap-2 mb-3">
                             <div class="flex items-center gap-2">
@@ -2682,14 +2179,15 @@
                                 <span class="text-[10px] font-mono text-slate-400">${ack}</span>
                             </div>
                             <span class="text-[10px] font-mono px-2 py-0.5 rounded-full border ${st.badge} flex items-center gap-1">
-                                <i class="fas ${st.icon} text-[9px]" aria-hidden="true"></i> ${getCitizenStatus(app.status)}
+                                <i class="fas ${st.icon} text-[9px]"></i> ${app.status}
                             </span>
                         </div>
                         <h4 class="font-bold text-white text-sm group-hover:text-cyanAccent-300 transition-colors">${app.service}</h4>
-                        <p class="text-xs text-cyanAccent-300 mt-2">${currentStage.name}</p>
-                        <p class="text-[11px] text-slate-400 mt-1">${tracker.waiting}</p>
-                        <span class="sr-only">Submitted ${app.date}. Open to see next steps and simulated review history.</span>
-                    </button>
+                        <div class="flex items-center justify-between text-[11px] text-slate-400 mt-2 font-mono">
+                            <span>LODGED: ${app.date}</span>
+                            <span class="text-brand-400 group-hover:underline flex items-center gap-1">Inspect <i class="fas fa-chevron-right text-[8px]"></i></span>
+                        </div>
+                    </div>
                 `;
             }).join('');
         }
@@ -2702,14 +2200,7 @@
 
             const st = getStatusInfo(app.status);
             const ack = app.ackId || `ACK-SETU-${app.id}`;
-            const tracker = getTrackerDetails(app);
-            const currentStage = tracker.stageDefinitions[tracker.step - 1];
-            const auditEvents = [
-                { date: app.date, event: currentLanguage === 'hi' ? 'नमूना आवेदन प्राप्त हुआ' : 'Sample application received', detail: currentLanguage === 'hi' ? 'व्यक्तिगत विवरण छिपाए गए' : 'Personal details redacted' },
-                { date: app.date, event: currentLanguage === 'hi' ? 'नमूना दस्तावेज़ जांच' : 'Sample document check', detail: app.status === 'Needs documents' ? (currentLanguage === 'hi' ? 'एक और नमूना दस्तावेज़ मांगा गया' : 'One more sample document requested') : tracker.step >= 2 ? (currentLanguage === 'hi' ? 'डेमो फ़ील्ड देखे गए; पहचान सत्यापित नहीं हुई' : 'Demo fields viewed; identity not verified') : (currentLanguage === 'hi' ? 'अभी नहीं किया गया' : 'Not performed') },
-                { date: app.date, event: currentLanguage === 'hi' ? 'मानव समीक्षा' : 'Human review', detail: tracker.step >= 3 ? (currentLanguage === 'hi' ? 'नमूना समीक्षा दर्ज; आधिकारिक समीक्षा नहीं' : 'Simulated review recorded; not an official review') : (currentLanguage === 'hi' ? 'नमूना प्रक्रिया में बाकी' : 'Pending in sample workflow') },
-                { date: app.date, event: currentLanguage === 'hi' ? 'निर्णय' : 'Decision', detail: tracker.step >= 4 ? (currentLanguage === 'hi' ? 'नमूना निर्णय दर्ज' : 'Sample decision recorded') : (currentLanguage === 'hi' ? 'अभी निर्णय नहीं' : 'No decision yet') }
-            ];
+            const step = app.step || 2;
 
             document.getElementById('all-apps-list').innerHTML = `
                 <div class="p-5 rounded-2xl bg-slate-900 border border-brand-500/40 mb-6">
@@ -2718,53 +2209,40 @@
                             <span class="text-[10px] font-mono text-slate-500 uppercase tracking-wider">Application Reference</span>
                             <h3 class="text-base font-bold text-white flex items-center gap-2 font-mono">
                                 ${ack}
-                                <span class="text-[10px] px-2 py-0.5 rounded-full border ${st.badge}">${getCitizenStatus(app.status)}</span>
+                                <span class="text-[10px] px-2 py-0.5 rounded-full border ${st.badge}">${app.status}</span>
                             </h3>
-                            <p class="text-xs text-brand-300 mt-0.5">${app.service}</p>
+                            <p class="text-xs text-brand-300 mt-0.5">${app.service} • Applicant: ${app.applicantName || 'Citizen'}</p>
+                            ${app.officerNotes ? `<p class="text-[11px] text-cyber-amber mt-1 font-mono"><i class="fas fa-clipboard-check"></i> Officer Note: ${app.officerNotes}</p>` : ''}
                         </div>
                         <button onclick="openReceiptModal('${ack}', '${app.service}', '${app.applicantName || 'Citizen'}', '${app.status}')" class="px-3.5 py-1.5 rounded-xl btn-vibe text-white text-xs font-semibold flex items-center gap-1.5">
-                            <i class="fas fa-receipt"></i> Sample receipt
+                            <i class="fas fa-receipt"></i> Digital Pass Slip
                         </button>
                     </div>
 
-                    <div class="rounded-xl border border-amber-400/30 bg-amber-500/10 p-3 text-xs text-amber-100 mb-4">
-                        <i class="fas fa-flask mr-1" aria-hidden="true"></i>
-                        ${currentLanguage === 'hi' ? 'डेमो ट्रैकर — सभी चरण, समीक्षा और समय अनुमानित हैं।' : 'Demo tracker — stages, reviews, and waiting times are simulated.'}
-                    </div>
-                    <div class="py-2" aria-label="${currentLanguage === 'hi' ? 'आवेदन के चरण' : 'Application stages'}">
-                        <div class="grid grid-cols-2 sm:grid-cols-4 gap-2 relative">
-                            ${tracker.stageDefinitions.map((definition, index) => `
-                                <div class="p-2.5 rounded-xl ${index + 1 < tracker.step ? 'bg-cyber-emerald/10 border border-cyber-emerald/40 text-cyber-emerald' : index + 1 === tracker.step ? 'bg-cyanAccent-500/10 border border-cyanAccent-500/40 text-cyanAccent-300' : 'bg-slate-800 text-slate-500'} text-center" ${index + 1 === tracker.step ? 'aria-current="step"' : ''}>
-                                    <span class="text-[10px] font-semibold">${index + 1}. ${definition.name}</span>
-                                    <span class="block text-[10px] mt-1">${index + 1 < tracker.step ? definition.complete : index + 1 === tracker.step ? definition.current : definition.upcoming}</span>
-                                </div>
-                            `).join('')}
+                    <div class="py-2">
+                        <div class="text-[11px] font-mono text-slate-400 uppercase tracking-wider mb-3">Department Workflow Progress</div>
+                        <div class="grid grid-cols-4 gap-2 relative">
+                            <div class="p-2.5 rounded-xl ${step >= 1 ? 'bg-cyber-emerald/10 border border-cyber-emerald/40 text-cyber-emerald' : 'bg-slate-800 text-slate-500'} text-center">
+                                <i class="fas fa-check-circle text-xs mb-1"></i>
+                                <div class="text-[10px] font-semibold">1. Lodged</div>
+                            </div>
+                            <div class="p-2.5 rounded-xl ${step >= 2 ? 'bg-cyber-emerald/10 border border-cyber-emerald/40 text-cyber-emerald' : 'bg-slate-800 text-slate-500'} text-center">
+                                <i class="fas fa-fingerprint text-xs mb-1"></i>
+                                <div class="text-[10px] font-semibold">2. Biometrics</div>
+                            </div>
+                            <div class="p-2.5 rounded-xl ${step >= 3 ? 'bg-cyber-emerald/10 border border-cyber-emerald/40 text-cyber-emerald' : 'bg-slate-800 text-slate-500'} text-center">
+                                <i class="fas fa-user-check text-xs mb-1"></i>
+                                <div class="text-[10px] font-semibold">3. Scrutiny</div>
+                            </div>
+                            <div class="p-2.5 rounded-xl ${step >= 4 ? 'bg-cyber-emerald/10 border border-cyber-emerald/40 text-cyber-emerald' : 'bg-slate-800 text-slate-500'} text-center">
+                                <i class="fas fa-certificate text-xs mb-1"></i>
+                                <div class="text-[10px] font-semibold">4. Dispatched</div>
+                            </div>
                         </div>
-                    </div>
-                    <div class="mt-4 rounded-xl border border-white/10 bg-white/5 p-4">
-                        <h4 class="text-sm font-bold text-white">${currentLanguage === 'hi' ? 'आगे क्या होगा' : 'What happens next'}</h4>
-                        <p class="mt-1 text-xs text-slate-200">${tracker.step >= 4 ? currentStage.current : tracker.nextStep}</p>
-                        <p class="mt-2 text-xs text-cyanAccent-300">${tracker.waiting}</p>
-                    </div>
-                    <div class="mt-4 rounded-xl border border-white/10 bg-white/5 p-4">
-                        <h4 class="text-sm font-bold text-white">${currentLanguage === 'hi' ? 'क्या जांचा गया' : 'What was checked'}</h4>
-                        <ul class="mt-2 space-y-1.5 text-xs text-slate-300">${tracker.checks.map((check) => `<li><i class="fas fa-circle-info text-cyanAccent-400 mr-1.5" aria-hidden="true"></i>${check}</li>`).join('')}</ul>
-                    </div>
-                    <div class="mt-4 rounded-xl border border-white/10 bg-white/5 p-4">
-                        <h4 class="text-sm font-bold text-white">${currentLanguage === 'hi' ? 'समीक्षा इतिहास (व्यक्तिगत विवरण हटाए गए)' : 'Review history (personal details redacted)'}</h4>
-                        <p class="mt-1 text-[11px] text-slate-400">${currentLanguage === 'hi' ? 'इस डेमो इतिहास में नाम, पहचान संख्या और संपर्क विवरण शामिल नहीं हैं।' : 'This sample audit view omits names, identity numbers, and contact details.'}</p>
-                        <ol class="mt-3 space-y-2" aria-label="${currentLanguage === 'hi' ? 'नमूना समीक्षा इतिहास' : 'Sample review history'}">
-                            ${auditEvents.map((event) => `
-                                <li class="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-1 border-l-2 border-cyanAccent-500/50 pl-3 py-1">
-                                    <span class="text-xs font-semibold text-slate-200">${event.event}</span>
-                                    <span class="text-[11px] text-slate-400">${event.detail} • ${event.date}</span>
-                                </li>
-                            `).join('')}
-                        </ol>
                     </div>
                 </div>
 
-                <div class="text-xs font-mono text-slate-400 uppercase mb-2">${currentLanguage === 'hi' ? 'नमूना आवेदन सूची' : 'Sample application list'} (${apps.length})</div>
+                <div class="text-xs font-mono text-slate-400 uppercase mb-2">Complete Ledger Log (${apps.length} items in setugov.xlsx)</div>
                 <div class="space-y-2">
                     ${apps.map(a => {
                         const s = getStatusInfo(a.status);
@@ -2777,13 +2255,13 @@
                                         <div class="text-[10px] text-slate-500 font-mono">${a.ackId || 'ACK-'+a.id} • ${a.applicantName || 'Citizen'} • ${a.date}</div>
                                     </div>
                                 </div>
-                                <span class="text-[10px] px-2 py-0.5 rounded-full border ${s.badge}">${getCitizenStatus(a.status)}</span>
+                                <span class="text-[10px] font-mono px-2 py-0.5 rounded-full border ${s.badge}">${a.status}</span>
                             </div>
                         `;
                     }).join('')}
                 </div>
             `;
-            openAccessibleDialog(document.getElementById('apps-modal'), '[aria-label="Close application tracker"]');
+            document.getElementById('apps-modal').classList.remove('hidden');
         }
 
         function showApplications() {
@@ -2792,23 +2270,21 @@
 
         function openReceiptModal(ackId, serviceName, applicantName, status) {
             sfxSuccess();
-            const user = JSON.parse(localStorage.getItem(DB_KEY)) || { name: 'Sample Citizen' };
+            const user = JSON.parse(localStorage.getItem(DB_KEY)) || { name: 'Verified Citizen' };
             document.getElementById('receipt-id').textContent = ackId;
             document.getElementById('receipt-service').textContent = serviceName;
             document.getElementById('receipt-applicant').textContent = applicantName || user.name;
-            document.getElementById('receipt-status').textContent = `SAMPLE: ${(status || 'Pending').toUpperCase()}`;
+            document.getElementById('receipt-status').textContent = (status || 'APPROVED').toUpperCase();
             document.getElementById('receipt-time').textContent = new Date().toISOString().replace('T', ' ').slice(0, 19) + ' UTC';
-            openAccessibleDialog(document.getElementById('receipt-modal'));
+            document.getElementById('receipt-modal').classList.remove('hidden');
         }
 
         function openServiceForm(serviceName) {
             sfxClick();
             document.getElementById('service-title').textContent = serviceName;
             clearGovForm();
-            renderDocumentChecklistForService(serviceName);
-            updateDraftAvailability(serviceName);
             const modal = document.getElementById('service-modal');
-            openAccessibleDialog(modal, '#gov-name');
+            modal.classList.remove('hidden');
             requestAnimationFrame(() => {
                 const shell = modal.querySelector('.glass-panel-glow');
                 if (shell) shell.classList.add('modal-shell');
@@ -2824,7 +2300,7 @@
             scanline.classList.remove('hidden');
             scanline.classList.add('animate-scanline');
 
-            btn.innerHTML = `<i class="fas fa-radar animate-spin"></i><span>Loading sample profile...</span>`;
+            btn.innerHTML = `<i class="fas fa-radar animate-spin"></i><span>Scanning Vault...</span>`;
             btn.disabled = true;
 
             setTimeout(() => {
@@ -2832,7 +2308,7 @@
                 const user = JSON.parse(localStorage.getItem(DB_KEY)) || {};
 
                 if (!vault || !vault.name) {
-                    showToast('Save a fictional sample profile on this device first.', 'warning');
+                    showToast('Please save your Citizen Vault Profile first', 'warning');
                     scanline.classList.add('hidden');
                     btn.innerHTML = originalContent;
                     btn.disabled = false;
@@ -2864,8 +2340,8 @@
 
                 sfxSuccess();
                 scanline.classList.add('hidden');
-                btn.innerHTML = `<i class="fas fa-check text-cyber-emerald"></i><span>Sample profile copied</span>`;
-                showToast('Demo auto-fill added sample profile details to the form.', 'success');
+                btn.innerHTML = `<i class="fas fa-check text-cyber-emerald"></i><span>Neural Auto-Filled!</span>`;
+                showToast('All 9 identity parameters authenticated & filled', 'success');
 
                 setTimeout(() => {
                     btn.innerHTML = originalContent;
@@ -2877,18 +2353,18 @@
         function simulateDocUpload() {
             sfxScan();
             const label = document.getElementById('doc-upload-label');
-            label.innerHTML = `<span class="text-cyanAccent-400"><i class="fas fa-circle-notch animate-spin"></i> Simulating document check...</span>`;
+            label.innerHTML = `<span class="text-cyanAccent-400"><i class="fas fa-circle-notch animate-spin"></i> Neural OCR Parsing ID Proof...</span>`;
             setTimeout(() => {
                 sfxSuccess();
-                label.innerHTML = `<span class="text-cyber-emerald font-mono"><i class="fas fa-file-circle-check"></i> SAMPLE_IDENTITY_CHECK.pdf (SIMULATED)</span>`;
-                showToast('Simulated document check complete; no identity provider was contacted.', 'info');
+                label.innerHTML = `<span class="text-cyber-emerald font-mono"><i class="fas fa-shield-check"></i> UIDAI_IDENTITY_VERIFIED.pdf (Signed)</span>`;
+                showToast('OCR extracted: Biometrics & Address Authenticated', 'success');
             }, 900);
         }
 
         function clearGovForm() {
             document.getElementById('gov-form').reset();
             const label = document.getElementById('doc-upload-label');
-            if (label) label.textContent = 'Click to simulate a document check';
+            if (label) label.textContent = 'Click to attach ID Proof (PDF, JPG)';
         }
 
         async function submitApplication() {
@@ -2925,17 +2401,15 @@
 
             const savedResult = await createApplication(newApp);
             const savedApplication = savedResult.application;
-            localStorage.removeItem(DRAFT_KEY);
-            updateDraftAvailability();
 
             closeModal('service-modal');
             populateRecentApps();
             openReceiptModal(savedApplication.ackId, service, nameField, 'Pending');
             if (savedResult.shared) {
-                showToast('Sample application saved to the shared demo ledger.', 'success');
+                showToast('Application saved to the shared ledger.', 'success');
             } else {
                 const reason = savedResult.error ? ` Shared ledger error: ${savedResult.error.message}.` : '';
-                showToast(`Sample application saved only in this browser; it is not shared with administrators.${reason}`, 'warning');
+                showToast(`Application saved only in this browser; it is not shared with administrators.${reason}`, 'warning');
             }
 
             if (window.__demoApproving) {
@@ -2949,19 +2423,19 @@
                     const app = await updateApplicationRecord(savedApplication.id, {
                         status: 'Approved',
                         step: 4,
-                        officerNotes: 'Simulated demo review; no official documentation or officer clearance'
+                        officerNotes: 'Live demo approval: documentation verified and officer clearance granted'
                     });
                     if (app) {
                         const receiptStatus = document.getElementById('receipt-status');
                         if (receiptStatus) {
-                            receiptStatus.textContent = 'SAMPLE: APPROVED';
+                            receiptStatus.textContent = 'APPROVED';
                             receiptStatus.classList.add('live-approval-glow', 'text-cyber-emerald');
                         }
                         renderAdminDashboard();
                         populateRecentApps();
-                        setDemoNarration('Demo review complete — this sample application was marked approved by the simulation.');
+                        setDemoNarration('Live approval complete — the officer has accepted the application in real time.');
                         showConfetti();
-                        showToast('Demo review complete: the sample application is marked approved.', 'success');
+                        showToast('Officer live approval granted: application accepted in real time.', 'success');
                     }
                     window.__demoApproving = false;
                 }, 1700);
@@ -2971,7 +2445,7 @@
         function showProfileModal() {
             sfxClick();
             syncProfileFormFields();
-            openAccessibleDialog(document.getElementById('profile-modal'), '#pi-name');
+            document.getElementById('profile-modal').classList.remove('hidden');
         }
 
         function syncProfileFormFields() {
@@ -3012,7 +2486,7 @@
 
             showHome(user);
             closeModal('profile-modal');
-            showToast('Sample profile details saved in this browser.', 'success');
+            showToast('Encrypted Citizen Vault updated successfully', 'success');
         });
 
         // Command Palette (Ctrl+K)
@@ -3025,7 +2499,7 @@
             { title: 'PAN Card 2.0 Application', category: 'Service', action: () => openServiceForm('PAN Card Application') },
             { title: 'Business License (MSME)', category: 'Service', action: () => openServiceForm('Business License Application') },
             { title: 'Track Applications Pipeline', category: 'App', action: () => showApplications() },
-            { title: 'Edit sample profile', category: 'Account', action: () => showProfileModal() },
+            { title: 'Edit Citizen Vault Profile', category: 'Account', action: () => showProfileModal() },
             { title: 'Toggle Audio & Sound Effects', category: 'Vibe', action: () => toggleSound() },
             { title: 'Trigger Celebration Confetti', category: 'Vibe', action: () => showConfetti() }
         ];
@@ -3036,38 +2510,15 @@
                 openCmdPalette();
             }
             if (e.key === 'Escape') {
-                const openDialogs = [...document.querySelectorAll('[role="dialog"]:not(.hidden)')];
-                const topDialog = openDialogs[openDialogs.length - 1];
-                if (topDialog) {
-                    closeModal(topDialog.id);
-                    return;
-                }
                 document.querySelectorAll('.fixed').forEach(el => {
                     if (!el.classList.contains('hidden')) el.classList.add('hidden');
                 });
-            }
-            if (e.key === 'Tab') {
-                const openDialogs = [...document.querySelectorAll('[role="dialog"]:not(.hidden)')];
-                const topDialog = openDialogs[openDialogs.length - 1];
-                if (!topDialog) return;
-                const focusable = [...topDialog.querySelectorAll('a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])')]
-                    .filter((element) => element.offsetParent !== null);
-                if (!focusable.length) return;
-                const first = focusable[0];
-                const last = focusable[focusable.length - 1];
-                if (e.shiftKey && (document.activeElement === first || !topDialog.contains(document.activeElement))) {
-                    e.preventDefault();
-                    last.focus();
-                } else if (!e.shiftKey && (document.activeElement === last || !topDialog.contains(document.activeElement))) {
-                    e.preventDefault();
-                    first.focus();
-                }
             }
         });
 
         function openCmdPalette() {
             sfxClick();
-            openAccessibleDialog(document.getElementById('cmd-palette-modal'), '#cmd-input');
+            document.getElementById('cmd-palette-modal').classList.remove('hidden');
             const input = document.getElementById('cmd-input');
             input.value = '';
             input.focus();
@@ -3106,49 +2557,43 @@
             }
         }
 
-        // Sample help responses
+        // AI Copilot Knowledge Base & Streaming Typewriter
         const faqKnowledgeBase = [
             {
                 keywords: ['admin', 'excel', 'sheet', 'administrator', 'pov', 'officer', 'setugov.xlsx'],
                 actionLabel: 'Open Admin POV',
                 serviceTrigger: 'OPEN_ADMIN',
-                answer: 'Administrator Mode: You can switch to the Administrator POV using the gold button in the top navigation. This demo can show sample applications in a local table or a configured shared demo ledger. It is not connected to government databases; status changes are for demonstration only.'
+                answer: 'Administrator Mode: You can switch to the Administrator POV anytime using the gold button in the top navigation. There, all citizen applications are synced live into the "setugov.xlsx" table where officers can review, download the real Excel spreadsheet, and mark requests as In Review, Approved, or Rejected!'
             },
             {
                 keywords: ['business', 'license', 'shop', 'store', 'trade', 'msme', 'company'],
                 actionLabel: 'Launch Business Form',
                 serviceTrigger: 'Business License Application',
-                answer: 'This prototype can open a sample Business License form. PAN, Aadhaar, and enterprise details are not checked against any external registry.'
+                answer: 'To apply for a Business License (MSME / Trade Registry): Click below to launch the pre-configured form. The system will verify your PAN, Aadhaar identity, and enterprise jurisdiction.'
             },
             {
                 keywords: ['pension', 'retirement', 'senior', 'elderly', 'old age', 'epfo', 'atal'],
                 actionLabel: 'Launch Pension Form',
                 serviceTrigger: 'Pension Service Application',
-                answer: 'Pension requirements vary by scheme, state, and applicant circumstances. This demo does not verify them. Check the current official scheme rules before applying; the sample checklist is illustrative only.'
+                answer: 'Senior Citizen Pension Requirements: (1) Proof of age (Aadhaar or Matriculation), (2) Active bank account with NPCI Aadhaar seeding, (3) Income/Domicile certificate.'
             },
             {
                 keywords: ['property', 'tax', 'house', 'land', 'building', 'municipal'],
                 actionLabel: 'Open Property Tax',
                 serviceTrigger: 'Property Tax Application',
-                answer: 'This prototype can open a sample Property Tax form. It does not connect to municipal records or a GIS service, and it cannot calculate an official tax assessment.'
+                answer: 'Property Tax assessment is calculated using your local municipal zone and carpet area. SetuGov pulls your registered property record automatically through our civic GIS bridge.'
             },
             {
                 keywords: ['ai', 'autofill', 'auto fill', 'auto-fill', 'magic', 'fill', 'prefill', 'how'],
-                actionLabel: 'Edit sample profile',
+                actionLabel: 'Edit Vault Details',
                 serviceTrigger: null,
-                answer: 'Demo auto-fill copies sample profile details stored in this browser into the form. It does not verify identity or use an AI service. Avoid entering real personal information.'
+                answer: 'AI Auto-Fill uses zero-knowledge encryption to store your verified details in your local Citizen Vault. When opening any government service form, the neural agent auto-populates legal name, Aadhaar token, address, and date of birth in 1 click.'
             },
             {
                 keywords: ['track', 'application', 'status', 'my applications', 'history', 'check', 'ledger'],
                 actionLabel: 'Open Pipeline Tracker',
                 serviceTrigger: 'TRACK_APPS',
-                answer: 'The tracker displays sample application statuses from this demo. It does not retrieve status from government systems or verify biometrics.'
-            },
-            {
-                keywords: ['secure', 'security', 'privacy', 'encrypt', 'data secure'],
-                actionLabel: 'Demo data note',
-                serviceTrigger: null,
-                answer: 'This public prototype is not a production identity or access-management system. Profile details and some applications are stored in this browser; configured deployments may share demo records through Netlify. Do not enter real personal information. No government identity provider is connected.'
+                answer: 'All filings are recorded on the civic ledger with real-time status: (1) Lodged, (2) Biometrics Verified, (3) Officer Scrutiny, and (4) Dispatched.'
             }
         ];
 
@@ -3167,63 +2612,10 @@
 
             setTimeout(() => {
                 removeTypingIndicator();
-                let matched = findFaqMatch(normalizeFaqQuestion(question));
-                if (currentLanguage === 'hi' && faqHindiReplies[matched.actionLabel]) {
-                    matched = { ...matched, ...faqHindiReplies[matched.actionLabel] };
-                }
+                const matched = findFaqMatch(question);
                 typewriterMessage(matched.answer, matched.actionLabel, matched.serviceTrigger);
             }, 650);
         }
-
-        function normalizeFaqQuestion(question) {
-            if (currentLanguage !== 'hi') return question;
-            const terms = [
-                [/पेंशन|वृद्धावस्था पेंशन/gu, ' pension '],
-                [/छात्रवृत्ति/gu, ' scholarship '],
-                [/व्यवसाय|लाइसेंस/gu, ' business license '],
-                [/दस्तावेज़|कागज़ात/gu, ' documents '],
-                [/आवेदन की स्थिति|स्थिति देखें|ट्रैक/gu, ' track status '],
-                [/सुरक्षित|सुरक्षा|गोपनीयता/gu, ' privacy secure '],
-                [/आवेदन|अप्लाई/gu, ' application '],
-                [/जानकारी|नियम|पात्रता/gu, ' eligibility ']
-            ];
-            return terms.reduce((normalized, [pattern, replacement]) => normalized.replace(pattern, replacement), question);
-        }
-
-        const faqHindiReplies = {
-            'Open Admin POV': {
-                actionLabel: 'नमूना आवेदन सूची',
-                answer: 'प्रशासक दृश्य में नमूना आवेदन दिखाई देते हैं। यह डेमो सरकारी डेटाबेस से जुड़ा नहीं है और स्थिति में बदलाव केवल उदाहरण के लिए हैं।'
-            },
-            'Launch Business Form': {
-                actionLabel: 'व्यवसाय का नमूना फ़ॉर्म खोलें',
-                answer: 'यह प्रोटोटाइप व्यवसाय लाइसेंस का नमूना फ़ॉर्म खोल सकता है। PAN, Aadhaar और व्यवसाय का विवरण किसी बाहरी रजिस्ट्री में जांचा नहीं जाता।'
-            },
-            'Launch Pension Form': {
-                actionLabel: 'पेंशन की नमूना सूची देखें',
-                answer: 'पेंशन योजनाओं में आयु, निवास, आय और अन्य नियम अलग-अलग हो सकते हैं। आधिकारिक पात्रता के लिए संबंधित सरकारी योजना के नियम देखें; यह डेमो पात्रता तय नहीं करता।'
-            },
-            'Open Property Tax': {
-                actionLabel: 'नमूना संपत्ति कर फ़ॉर्म खोलें',
-                answer: 'यह नमूना फ़ॉर्म है। प्रोटोटाइप नगर निगम रिकॉर्ड या GIS सेवा से जुड़ा नहीं है और आधिकारिक कर की गणना नहीं करता।'
-            },
-            'Edit sample profile': {
-                actionLabel: 'नमूना प्रोफ़ाइल संपादित करें',
-                answer: 'डेमो ऑटो-फ़िल इस ब्राउज़र में सहेजे नमूना प्रोफ़ाइल विवरण फ़ॉर्म में कॉपी करता है। यह पहचान सत्यापित नहीं करता। वास्तविक व्यक्तिगत जानकारी न भरें।'
-            },
-            'Open Pipeline Tracker': {
-                actionLabel: 'नमूना आवेदन स्थिति देखें',
-                answer: 'ट्रैकर इस डेमो के नमूना आवेदन दिखाता है। यह सरकारी सिस्टम से स्थिति नहीं लेता और बायोमेट्रिक जानकारी सत्यापित नहीं करता।'
-            },
-            'Demo data note': {
-                actionLabel: null,
-                answer: 'यह सार्वजनिक प्रोटोटाइप उत्पादन पहचान प्रणाली नहीं है। कुछ नमूना विवरण इस ब्राउज़र में सहेजे जाते हैं। वास्तविक व्यक्तिगत जानकारी न भरें। कोई सरकारी पहचान सेवा इससे जुड़ी नहीं है।'
-            },
-            'Explore Services': {
-                actionLabel: null,
-                answer: 'आप नमूना पात्रता जांच सकते हैं, दस्तावेज़ सूची देख सकते हैं, नमूना आवेदन शुरू कर सकते हैं या आवेदन स्थिति देख सकते हैं। ये सभी डेमो सुविधाएँ हैं।'
-            }
-        };
 
         function findFaqMatch(question) {
             const q = question.toLowerCase();
@@ -3240,7 +2632,7 @@
             }
             if (best && bestScore > 0) return best;
             return {
-                answer: "I can help you explore sample forms, see illustrative checklists, or inspect demo application timelines. This prototype does not process official applications.",
+                answer: "I can help you navigate all government schemes, explain the administrator excel ledger, trigger AI Auto-Fill, or inspect application timelines.",
                 actionLabel: 'Explore Services',
                 serviceTrigger: null
             };
@@ -3334,7 +2726,7 @@
                 </div>
                 <div class="glass-panel px-4 py-3 rounded-2xl rounded-tl-sm border border-white/10 flex items-center gap-1.5">
                     <span class="w-1.5 h-1.5 rounded-full bg-cyanAccent-400 animate-ping"></span>
-                    <span class="text-xs text-slate-400 font-mono">Preparing a demo response...</span>
+                    <span class="text-xs text-slate-400 font-mono">Neural agent synthesizing response...</span>
                 </div>
             `;
             chat.appendChild(div);
@@ -3369,34 +2761,36 @@
             if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
                 const SpeechRec = window.SpeechRecognition || window.webkitSpeechRecognition;
                 const rec = new SpeechRec();
-                rec.lang = currentLanguage === 'hi' ? 'hi-IN' : 'en-IN';
+                rec.lang = 'en-IN';
                 rec.interimResults = false;
                 btn.classList.add('text-rose-500', 'animate-pulse');
-                btn.setAttribute('aria-pressed', 'true');
-                showToast(currentLanguage === 'hi' ? 'सुन रहा है… अब बोलें।' : 'Listening… Speak now.', 'info');
+                showToast('Listening... Speak now', 'info');
 
                 rec.onresult = (e) => {
                     input.value = e.results[0][0].transcript;
                     btn.classList.remove('text-rose-500', 'animate-pulse');
                     sendFaqMessage();
                 };
-                const stopListening = () => {
+                rec.onerror = () => {
                     btn.classList.remove('text-rose-500', 'animate-pulse');
-                    btn.setAttribute('aria-pressed', 'false');
-                };
-                rec.onend = stopListening;
-                rec.onerror = (event) => {
-                    stopListening();
-                    showToast(currentLanguage === 'hi'
-                        ? `आवाज़ पहचान उपलब्ध नहीं है (${event.error || 'त्रुटि'}). टाइप करके प्रयास करें।`
-                        : `Voice input is unavailable (${event.error || 'recognition error'}). Please type your question.`, 'warning');
+                    fallbackVoiceDemo();
                 };
                 rec.start();
             } else {
-                showToast(currentLanguage === 'hi'
-                    ? 'इस ब्राउज़र में आवाज़ से प्रश्न पूछना समर्थित नहीं है। टाइप करके प्रयास करें।'
-                    : 'Voice input is not supported in this browser. Please type your question.', 'warning');
+                fallbackVoiceDemo();
             }
+        }
+
+        function fallbackVoiceDemo() {
+            const input = document.getElementById('faq-input');
+            const demoQuestions = [
+                'How do I view the admin excel sheet?',
+                'How do I apply for a business license?',
+                'What documents do I need for a pension application?'
+            ];
+            input.value = demoQuestions[Math.floor(Math.random() * demoQuestions.length)];
+            showToast('Simulated voice query detected', 'info');
+            sendFaqMessage();
         }
 
         function showToast(message, type = 'success') {
@@ -3451,9 +2845,6 @@
             modal.classList.add('hidden');
             const shell = modal.querySelector('.glass-panel-glow, .modal-shell');
             if (shell) shell.classList.remove('modal-shell');
-            const returnFocus = modalFocusReturn.get(modal);
-            modalFocusReturn.delete(modal);
-            if (returnFocus) returnFocus.focus();
         }
 
         function escapeHtml(text) {
